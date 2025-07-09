@@ -342,7 +342,7 @@ const HostList: React.FC = () => {
                   <div>
                     <h4 className="font-medium text-umd-black mb-2 flex items-center">
                       <Shield className="w-4 h-4 mr-2" />
-                      Requirements
+                      Additional Information
                     </h4>
                     <div className="text-sm space-y-1">
                       {host.federalAgency && (
@@ -360,9 +360,14 @@ const HostList: React.FC = () => {
                     </div>
                   </div>
 
-                  <Button className="w-full" variant="primary">
-                    Select This Host
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button className="flex-1" variant="outline">
+                      Add to Favorites
+                    </Button>
+                    <Button className="flex-1" variant="primary">
+                      Apply
+                    </Button>
+                  </div>
                 </div>
               </div>
             </Card>

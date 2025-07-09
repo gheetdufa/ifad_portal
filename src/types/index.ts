@@ -15,6 +15,7 @@ export interface Student extends User {
   applicationSubmitted: boolean;
   matched: boolean;
   matchedHostId?: string;
+  favoriteHostIds?: string[];
 }
 
 export interface Host extends User {
@@ -28,6 +29,15 @@ export interface Host extends User {
   maxStudents: number;
   verified: boolean;
   matchedStudentIds: string[];
+  visibilitySettings?: HostVisibilitySettings;
+}
+
+export interface HostVisibilitySettings {
+  showCompanyDescription: boolean;
+  showExpectations: boolean;
+  showLocation: boolean;
+  showAdditionalInfo: boolean;
+  showContactInfo: boolean;
 }
 
 export interface Admin extends User {
@@ -60,4 +70,11 @@ export interface ProgramTimeline {
   matchingComplete: string;
   experienceStart: string;
   experienceEnd: string;
+}
+
+export interface StudentFavorites {
+  studentId: string;
+  favoriteHostIds: string[];
+  rankedPreferences: string[];
+  lastUpdated: string;
 }
