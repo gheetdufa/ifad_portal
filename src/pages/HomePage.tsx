@@ -590,82 +590,139 @@ const HomePage: React.FC = () => {
         </div>
       </section>
 
-      {/* How It Works - Students */}
-      <section className="py-8 bg-umd-gray-50"> {/* Reduced py-16 to py-8 */}
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-8"> {/* Reduced mb-16 to mb-8 */}
-            <h2 className="text-3xl md:text-4xl font-bold text-umd-black mb-4"> {/* Smaller text and mb-6 to mb-4 */}
+      {/* Your Path to Career Discovery - Enhanced */}
+      <section className="py-16 bg-gradient-to-br from-white via-gray-50 to-white relative overflow-hidden">
+        {/* Background decoration */}
+        <div className="absolute inset-0 opacity-5">
+          <div className="absolute top-10 left-10 w-32 h-32 border border-umd-red rounded-full animate-spin-slow"></div>
+          <div className="absolute bottom-10 right-10 w-24 h-24 border border-umd-gold rounded-full animate-spin-slow-reverse"></div>
+        </div>
+        
+        <div className="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+          {/* Enhanced header section */}
+          <div className="text-center mb-12">
+            <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-umd-red to-red-700 rounded-2xl shadow-xl mb-6 transform hover:scale-110 transition-all duration-500">
+              <TrendingUp className="w-8 h-8 text-white" />
+            </div>
+            
+            <h2 className="text-4xl md:text-5xl font-bold text-umd-black mb-6">
               Your Path to <span className="bg-gradient-to-r from-umd-red to-red-600 bg-clip-text text-transparent">Career Discovery</span>
             </h2>
-            <div className="text-lg text-umd-gray-700 max-w-3xl mx-auto leading-relaxed"> {/* Smaller text-xl to text-lg */}
-              <ul className="space-y-1 text-left"> {/* Reduced space-y-2 to space-y-1 */}
-                <li className="flex items-start">
-                  <span className="text-umd-red mr-2 mt-1">•</span> {/* Reduced mr-3 to mr-2 */}
-                  Join hundreds of UMD undergraduate students who have transformed their career perspectives
-                </li>
-                <li className="flex items-start">
-                  <span className="text-umd-red mr-2 mt-1">•</span>
-                  Gain hands-on professional experiences in your field of interest
-                </li>
-                <li className="flex items-start">
-                  <span className="text-umd-red mr-2 mt-1">•</span>
-                  Follow this roadmap to career discovery success
-                </li>
-              </ul>
+            
+            {/* Enhanced bullet points with better visual design */}
+            <div className="max-w-4xl mx-auto">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                <div className="group bg-white rounded-xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-2 border border-gray-100">
+                  <div className="w-12 h-12 bg-gradient-to-br from-umd-red to-red-700 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-all duration-300">
+                    <Users className="w-6 h-6 text-white" />
+                  </div>
+                  <p className="text-umd-gray-700 leading-relaxed font-medium">
+                    Join <span className="text-umd-red font-bold">hundreds of UMD undergraduate students</span> who have transformed their career perspectives
+                  </p>
+                </div>
+                
+                <div className="group bg-white rounded-xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-2 border border-gray-100">
+                  <div className="w-12 h-12 bg-gradient-to-br from-umd-gold to-yellow-600 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-all duration-300">
+                    <Briefcase className="w-6 h-6 text-umd-black" />
+                  </div>
+                  <p className="text-umd-gray-700 leading-relaxed font-medium">
+                    Gain <span className="text-umd-gold font-bold">hands-on professional experiences</span> in your field of interest
+                  </p>
+                </div>
+                
+                <div className="group bg-white rounded-xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-2 border border-gray-100">
+                  <div className="w-12 h-12 bg-gradient-to-br from-umd-red to-red-700 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-all duration-300">
+                    <Target className="w-6 h-6 text-white" />
+                  </div>
+                  <p className="text-umd-gray-700 leading-relaxed font-medium">
+                    Follow this <span className="text-umd-red font-bold">roadmap to career discovery success</span>
+                  </p>
+                </div>
+              </div>
+              
+              {/* Call to action prompt */}
+              <div className="bg-gradient-to-r from-umd-red/10 to-red-600/10 rounded-xl p-6 border border-umd-red/20">
+                <p className="text-lg text-umd-red font-semibold text-center mb-2">
+                  Ready to transform your career journey?
+                </p>
+                <p className="text-umd-gray-600 text-center">
+                  Follow the simple steps below to get started with your professional discovery experience
+                </p>
+              </div>
             </div>
-            <div className="w-24 h-1 bg-gradient-to-r from-transparent via-umd-red to-transparent mx-auto mt-4"></div> {/* mt-6 to mt-4 */}
           </div>
 
-          <div className="max-w-4xl mx-auto">
-            <div className="space-y-4"> {/* Reduced space-y-8 to space-y-4 */}
-              {studentSteps.map((step, index) => (
-                <div key={step.step} className="relative">
-                  <Card className={`group hover:shadow-2xl transition-all duration-500 delay-${index * 100} hover:-translate-y-2 bg-white border-0 shadow-lg hover:shadow-umd-red/20 rounded-2xl overflow-hidden`}> {/* hover:-translate-y-4 to -y-2 */}
-                    {/* Background Pattern */}
-                    <div className="absolute top-0 right-0 w-20 h-20 bg-gradient-to-br from-umd-red/5 to-transparent rounded-full transform translate-x-10 -translate-y-10"></div> {/* w-32 h-32 to w-20 h-20, translate-x-16 to x-10 */}
-                    
-                    <div className="relative p-4 text-center"> {/* p-8 to p-4 */}
-                      {/* Enhanced Step Number with Icon */}
-                      <div className="relative mb-4"> {/* mb-6 to mb-4 */}
-                        <div className="w-14 h-14 bg-gradient-to-br from-umd-red to-red-700 rounded-2xl flex items-center justify-center mx-auto shadow-xl group-hover:shadow-umd-red/50 transition-all duration-500 group-hover:scale-105 group-hover:rotate-2"> {/* w-20 h-20 to w-14 h-14, group-hover:scale-110 to 105, rotate-3 to 2 */}
-                          <span className="text-xl">{step.icon}</span> {/* text-2xl to text-xl */}
-                        </div>
-                        <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 w-6 h-6 bg-umd-red text-white rounded-full flex items-center justify-center text-xs font-bold group-hover:bg-umd-red-dark transition-colors duration-300"> {/* w-8 h-8 to w-6 h-6, text-sm to text-xs */}
-                          {step.step}
-                        </div>
-                      </div>
-                      
-                      <h3 className="text-lg font-bold text-umd-black mb-2 group-hover:text-umd-red transition-colors duration-300">{/* text-xl to text-lg, mb-3 to mb-2 */}{step.title}</h3>
-                      <p className="text-umd-gray-700 mb-2 leading-relaxed text-sm">{/* mb-3 to mb-2, text-sm added */}{step.description}</p>
-                      <p className="text-xs text-umd-red font-semibold bg-umd-red/10 px-2 py-1 rounded-full inline-block">{/* text-sm to text-xs, px-3 to px-2 */}{step.detail}</p>
-                    
-                      {/* Complete Orientation Button for Step 1 */}
-                      {step.step === 1 && (
-                        <div className="mt-2"> {/* mt-4 to mt-2 */}
-                          <Button 
-                            size="sm" 
-                            className="bg-umd-red text-white font-bold px-4 py-1.5 hover:bg-umd-red-dark transition-all duration-300 shadow-md hover:shadow-lg text-xs" /* px-6 py-2 to px-4 py-1.5, text-sm to text-xs */
-                          >
-                            <a href="https://umd-ucc.catalog.instructure.com/courses/intern-for-a-day-spring-2025-mandatory-orientation" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2">
-                              🎓 Start Orientation
-                            </a>
-                          </Button>
-                        </div>
-                      )}
+          {/* Streamlined Steps */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            {studentSteps.map((step, index) => (
+              <div key={step.step} className="relative group">
+                <div className="bg-white rounded-xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-2 border border-gray-100 text-center min-h-[260px] flex flex-col">
+                  {/* Step number with icon */}
+                  <div className="relative mb-4">
+                    <div className="w-14 h-14 bg-gradient-to-br from-umd-red to-red-700 rounded-2xl flex items-center justify-center mx-auto shadow-xl group-hover:scale-110 transition-all duration-300">
+                      <span className="text-xl">{step.icon}</span>
                     </div>
-                  </Card>
+                    <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 w-6 h-6 bg-umd-gold text-umd-black rounded-full flex items-center justify-center text-xs font-bold">
+                      {step.step}
+                    </div>
+                  </div>
                   
-                  {/* Compact Arrow between steps */}
-                  {index < studentSteps.length - 1 && (
-                    <div className="flex justify-center my-1"> {/* my-3 to my-1 */}
-                      <div className="w-6 h-6 bg-umd-red rounded-full flex items-center justify-center"> {/* w-8 h-8 to w-6 h-6 */}
-                        <ArrowRight className="w-3 h-3 text-white" /> {/* w-4 h-4 to w-3 h-3 */}
-                      </div>
+                  {/* Step content */}
+                  <div className="flex-grow flex flex-col justify-center">
+                    <h3 className="text-lg font-bold text-umd-black mb-3 group-hover:text-umd-red transition-colors duration-300">
+                      {step.title}
+                    </h3>
+                    <p className="text-sm text-umd-gray-600 leading-relaxed mb-3">
+                      {step.description}
+                    </p>
+                    {step.detail && (
+                      <p className="text-xs text-umd-red font-semibold bg-umd-red/10 px-2 py-1 rounded-full inline-block mx-auto">
+                        {step.detail}
+                      </p>
+                    )}
+                  </div>
+                  
+                  {/* Action button for Step 1 */}
+                  {step.step === 1 && (
+                    <div className="mt-4">
+                      <Button 
+                        size="sm" 
+                        className="bg-umd-red text-white font-bold px-4 py-2 hover:bg-umd-red-dark transition-all duration-300 shadow-md hover:shadow-lg text-xs w-full"
+                      >
+                        <a href="https://umd-ucc.catalog.instructure.com/courses/intern-for-a-day-spring-2025-mandatory-orientation" target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2">
+                          🎓 Start Orientation
+                        </a>
+                      </Button>
                     </div>
                   )}
                 </div>
-              ))}
+                
+                {/* Arrow connector for desktop */}
+                {index < studentSteps.length - 1 && (
+                  <div className="hidden lg:block absolute top-1/2 -right-3 transform -translate-y-1/2 z-10">
+                    <ArrowRight className="w-6 h-6 text-umd-red/60" />
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+          
+          {/* Enhanced call to action */}
+          <div className="text-center">
+            <div className="relative group inline-block">
+              <div className="absolute -inset-2 bg-gradient-to-r from-umd-red to-red-600 rounded-xl blur opacity-0 group-hover:opacity-75 transition duration-500"></div>
+              <Button 
+                size="lg" 
+                variant="primary" 
+                icon={ArrowRight}
+                className="relative bg-gradient-to-r from-umd-red to-red-700 hover:from-red-700 hover:to-umd-red shadow-lg hover:shadow-xl transition-all duration-300 px-8 py-4 text-lg font-bold"
+              >
+                <Link to="/login?type=student" className="block w-full">Start Your Journey Today</Link>
+              </Button>
             </div>
+            <p className="text-sm text-umd-gray-500 mt-3">
+              Join the hundreds of students who have already transformed their careers
+            </p>
           </div>
         </div>
       </section>
