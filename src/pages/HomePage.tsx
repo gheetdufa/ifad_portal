@@ -327,65 +327,115 @@ const HomePage: React.FC = () => {
       </section>
 
       {/* How It Works - Students */}
-      <section className="py-16 bg-umd-gray-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <section className="py-16 bg-gradient-to-br from-gray-50 via-white to-gray-50 relative overflow-hidden">
+        <div className="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-umd-black mb-4">How It Works for Students</h2>
-            <p className="text-lg text-umd-gray-700">
-              Follow these simple steps to participate in the IFAD program
+            <h2 className="text-3xl md:text-4xl font-bold text-umd-black mb-4">
+              Your Path to <span className="bg-gradient-to-r from-umd-red to-red-600 bg-clip-text text-transparent">Career Discovery</span>
+            </h2>
+            <p className="text-lg text-umd-gray-700 max-w-2xl mx-auto">
+              Four simple steps to unlock your career potential
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {/* Compact Steps */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
             {studentSteps.map((step, index) => (
-              <div key={step.step} className="relative">
-                <Card className={`text-center h-full group hover:shadow-xl transition-all duration-500 delay-${index * 100} hover:-translate-y-2`}>
-                  <div className="w-12 h-12 bg-umd-red text-white rounded-full flex items-center justify-center text-xl font-bold mx-auto mb-4 group-hover:bg-umd-red-dark transition-colors duration-300">
+              <div key={step.step} className="relative group">
+                <div className="bg-white rounded-xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-2 border border-gray-100 text-center min-h-[200px] flex flex-col">
+                  {/* Step number */}
+                  <div className="w-12 h-12 bg-gradient-to-br from-umd-red to-red-700 text-white rounded-full flex items-center justify-center text-xl font-bold mx-auto mb-4 group-hover:scale-110 transition-all duration-300">
                     {step.step}
                   </div>
-                  <h3 className="text-lg font-semibold text-umd-black mb-2 group-hover:text-umd-red transition-colors duration-300">{step.title}</h3>
-                  <p className="text-sm text-umd-gray-600">{step.description}</p>
-                </Card>
+                  
+                  {/* Step content */}
+                  <div className="flex-grow flex flex-col justify-center">
+                    <h3 className="text-lg font-bold text-umd-black mb-3 group-hover:text-umd-red transition-colors duration-300">
+                      {step.title}
+                    </h3>
+                    <p className="text-sm text-umd-gray-600 leading-relaxed">
+                      {step.description}
+                    </p>
+                  </div>
+                </div>
                 
+                {/* Arrow connector for desktop */}
                 {index < studentSteps.length - 1 && (
                   <div className="hidden lg:block absolute top-1/2 -right-3 transform -translate-y-1/2 z-10">
-                    <ArrowRight className="w-6 h-6 text-umd-gray-400 animate-pulse" />
+                    <ArrowRight className="w-6 h-6 text-umd-red/60" />
                   </div>
                 )}
               </div>
             ))}
+          </div>
+
+          {/* Quick action button */}
+          <div className="text-center">
+            <Button 
+              size="lg" 
+              variant="primary" 
+              icon={ArrowRight}
+              className="bg-gradient-to-r from-umd-red to-red-700 hover:from-red-700 hover:to-umd-red shadow-lg hover:shadow-xl transition-all duration-300"
+            >
+              <Link to="/login?type=student" className="block w-full">Start Your Journey</Link>
+            </Button>
           </div>
         </div>
       </section>
 
       {/* How It Works - Hosts */}
-      <section className="py-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <section className="py-16 bg-gradient-to-br from-umd-gray-50 via-gray-100 to-umd-gray-50">
+        <div className="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-umd-black mb-4">How It Works for Hosts</h2>
-            <p className="text-lg text-umd-gray-700">
-              Share your expertise and help students explore career opportunities
+            <h2 className="text-3xl md:text-4xl font-bold text-umd-black mb-4">
+              Share Your <span className="bg-gradient-to-r from-umd-gold to-yellow-500 bg-clip-text text-transparent">Expertise</span>
+            </h2>
+            <p className="text-lg text-umd-gray-700 max-w-2xl mx-auto">
+              Help students explore careers in four easy steps
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {/* Compact Steps */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
             {hostSteps.map((step, index) => (
-              <div key={step.step} className="relative">
-                <Card className={`text-center h-full group hover:shadow-xl transition-all duration-500 delay-${index * 100} hover:-translate-y-2`}>
-                  <div className="w-12 h-12 bg-umd-gold text-umd-black rounded-full flex items-center justify-center text-xl font-bold mx-auto mb-4 group-hover:bg-umd-gold-dark transition-colors duration-300">
+              <div key={step.step} className="relative group">
+                <div className="bg-white rounded-xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-2 border border-gray-100 text-center min-h-[200px] flex flex-col">
+                  {/* Step number */}
+                  <div className="w-12 h-12 bg-gradient-to-br from-umd-gold to-yellow-600 text-umd-black rounded-full flex items-center justify-center text-xl font-bold mx-auto mb-4 group-hover:scale-110 transition-all duration-300">
                     {step.step}
                   </div>
-                  <h3 className="text-lg font-semibold text-umd-black mb-2 group-hover:text-umd-red transition-colors duration-300">{step.title}</h3>
-                  <p className="text-sm text-umd-gray-600">{step.description}</p>
-                </Card>
+                  
+                  {/* Step content */}
+                  <div className="flex-grow flex flex-col justify-center">
+                    <h3 className="text-lg font-bold text-umd-black mb-3 group-hover:text-umd-gold transition-colors duration-300">
+                      {step.title}
+                    </h3>
+                    <p className="text-sm text-umd-gray-600 leading-relaxed">
+                      {step.description}
+                    </p>
+                  </div>
+                </div>
                 
+                {/* Arrow connector for desktop */}
                 {index < hostSteps.length - 1 && (
                   <div className="hidden lg:block absolute top-1/2 -right-3 transform -translate-y-1/2 z-10">
-                    <ArrowRight className="w-6 h-6 text-umd-gray-400 animate-pulse" />
+                    <ArrowRight className="w-6 h-6 text-umd-gold/60" />
                   </div>
                 )}
               </div>
             ))}
+          </div>
+
+          {/* Quick action button */}
+          <div className="text-center">
+            <Button 
+              size="lg" 
+              variant="secondary"
+              icon={Briefcase}
+              className="border-2 border-umd-gold bg-umd-gold text-umd-black hover:bg-yellow-400 hover:border-yellow-400 shadow-lg hover:shadow-xl transition-all duration-300"
+            >
+              <Link to="/login?type=host" className="block w-full">Become a Host</Link>
+            </Button>
           </div>
         </div>
       </section>

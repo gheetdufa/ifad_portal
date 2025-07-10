@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { MapPin, Globe, Building, Users, Calendar, Shield, Search, Filter, Briefcase, GraduationCap } from 'lucide-react';
+import { MapPin, Globe, Building, Users, Calendar, Shield, Search, Filter, Briefcase, GraduationCap, Check, X } from 'lucide-react';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
@@ -377,29 +377,76 @@ const PublicHostList: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Requirements and Badges */}
-                <div className="flex flex-wrap gap-2 pt-2">
-                  {host.umdAlumni === 'Yes' && (
-                    <Badge variant="success">
-                      <GraduationCap className="w-3 h-3 mr-1" />
-                      UMD Alumni
-                    </Badge>
-                  )}
-                  {host.dcMetroAccessible === 'Yes' && (
-                    <Badge variant="secondary">Metro Accessible</Badge>
-                  )}
-                  {host.federalAgency === 'Yes' && (
-                    <Badge variant="warning">
-                      <Shield className="w-3 h-3 mr-1" />
-                      Federal Agency
-                    </Badge>
-                  )}
-                  {host.requiresCitizenship === 'Yes' && (
-                    <Badge variant="error">Citizenship Required</Badge>
-                  )}
-                  {host.requiresBackgroundCheck === 'Yes' && (
-                    <Badge variant="warning">Background Check Required</Badge>
-                  )}
+                {/* Requirements Section */}
+                <div className="pt-4 border-t border-umd-gray-200">
+                  <h4 className="text-sm font-semibold text-umd-gray-700 mb-3">Requirements:</h4>
+                  <div className="grid grid-cols-2 gap-2 mb-4">
+                    <div className="flex items-center space-x-2">
+                      {host.requiresCitizenship === 'Yes' ? (
+                        <Check className="w-4 h-4 text-green-600" />
+                      ) : (
+                        <X className="w-4 h-4 text-red-500" />
+                      )}
+                      <span className={`text-sm ${host.requiresCitizenship === 'Yes' ? 'text-green-700' : 'text-gray-600'}`}>
+                        US Citizenship Required
+                      </span>
+                    </div>
+                    
+                    <div className="flex items-center space-x-2">
+                      {host.requiresBackgroundCheck === 'Yes' ? (
+                        <Check className="w-4 h-4 text-green-600" />
+                      ) : (
+                        <X className="w-4 h-4 text-red-500" />
+                      )}
+                      <span className={`text-sm ${host.requiresBackgroundCheck === 'Yes' ? 'text-green-700' : 'text-gray-600'}`}>
+                        Background Check Required
+                      </span>
+                    </div>
+                    
+                    <div className="flex items-center space-x-2">
+                      {host.federalAgency === 'Yes' ? (
+                        <Check className="w-4 h-4 text-green-600" />
+                      ) : (
+                        <X className="w-4 h-4 text-red-500" />
+                      )}
+                      <span className={`text-sm ${host.federalAgency === 'Yes' ? 'text-green-700' : 'text-gray-600'}`}>
+                        Federal Agency
+                      </span>
+                    </div>
+                    
+                    <div className="flex items-center space-x-2">
+                      {host.dcMetroAccessible === 'Yes' ? (
+                        <Check className="w-4 h-4 text-green-600" />
+                      ) : (
+                        <X className="w-4 h-4 text-red-500" />
+                      )}
+                      <span className={`text-sm ${host.dcMetroAccessible === 'Yes' ? 'text-green-700' : 'text-gray-600'}`}>
+                        DC Metro Accessible
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Additional Information */}
+                <div className="pt-2">
+                  <h4 className="text-sm font-semibold text-umd-gray-700 mb-2">Additional Information:</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {host.umdAlumni === 'Yes' && (
+                      <Badge variant="success">
+                        <GraduationCap className="w-3 h-3 mr-1" />
+                        UMD Alumni
+                      </Badge>
+                    )}
+                    {host.springBreakAvailable === 'Yes' && (
+                      <Badge variant="secondary">Spring Break Available</Badge>
+                    )}
+                    {host.ifadOption.includes('virtual') && (
+                      <Badge variant="secondary">Virtual Interview</Badge>
+                    )}
+                    {host.ifadOption.includes('In-person') && (
+                      <Badge variant="primary">In-Person Experience</Badge>
+                    )}
+                  </div>
                 </div>
 
                 {/* Additional Info */}
