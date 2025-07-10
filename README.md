@@ -184,13 +184,4 @@ After editing, visit the live website to make sure your changes appear correctly
 
 ---
 
-## 📞 Contact Information
-
-If you need help or have questions:
-1. **Create an issue** on this GitHub repository
-2. **Contact the technical team**
-3. **Include screenshots** of what you're trying to change
-
----
-
 *Remember: GitHub automatically saves a history of all changes, so don't worry about making mistakes - they can always be undone!* 
