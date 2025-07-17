@@ -1,16 +1,16 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Link } from 'react-router-dom';
 import { 
-  Users, UserCheck, FileText, BarChart3, Settings, TrendingUp, Calendar, CheckCircle, 
-  AlertTriangle, Clock, Mail, Database, Download, Upload, Shield, Target,
-  ChevronRight, Play, Pause, RotateCcw
+  Users, UserCheck, FileText, BarChart3, Settings, TrendingUp, CheckCircle, 
+  Clock, Mail, Database, Download, Upload, Shield, Target,
+  Play, Pause, RotateCcw
 } from 'lucide-react';
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import Badge from '../../components/ui/Badge';
 
 const AdminDashboard: React.FC = () => {
-  const [currentStep, setCurrentStep] = useState('step2b'); // Current active step
+  // const [currentStep, setCurrentStep] = useState('step2b'); // Current active step - unused
 
   // Mock admin data - in production, this would come from API
   const programStats = {
@@ -265,7 +265,7 @@ const AdminDashboard: React.FC = () => {
             </div>
             
             <div className="space-y-4">
-              {workflowSteps.map((step, index) => (
+              {workflowSteps.map((step) => (
                 <div key={step.id} className={`border-2 rounded-lg p-4 ${getStatusColor(step.status)} transition-all duration-300 hover:shadow-md`}>
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex items-center space-x-3">

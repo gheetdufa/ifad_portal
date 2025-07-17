@@ -1,4 +1,4 @@
-import { useState, useEffect, createContext, useContext, ReactNode } from 'react';
+import { useState, useEffect, createContext, useContext } from 'react';
 import { User } from '../types';
 
 interface AuthContextType {
@@ -32,7 +32,7 @@ export const useAuthProvider = () => {
     setIsLoading(false);
   }, []);
 
-  const login = async (email: string, password: string) => {
+  const login = async (email: string) => {
     setIsLoading(true);
     
     // Mock login logic - in production, this would call your authentication API

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Menu, X, User, LogOut, Home } from 'lucide-react';
+import { Menu, X, LogOut, Home } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import Button from '../ui/Button';
 import SmallerLogo from '../../assets/Smaller_logo.png';
@@ -42,8 +42,8 @@ const Header: React.FC = () => {
               className="h-14 w-auto"
             />
             <div className="hidden sm:block">
-              <h1 className="text-xl font-bold text-umd-black">IFAD Portal</h1>
-              <p className="text-xs text-umd-gray-600">University of Maryland</p>
+              <h1 className="text-xl font-bold text-umd-black">University Career Center</h1>
+              <p className="text-xs text-umd-gray-600">Intern for a Day</p>
             </div>
           </Link>
 
@@ -91,18 +91,11 @@ const Header: React.FC = () => {
             ) : (
               <div className="flex items-center space-x-2">
                 <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => navigate('/login')}
-                >
-                  Login
-                </Button>
-                <Button
                   variant="primary"
                   size="sm"
-                  onClick={() => navigate('/register')}
+                  className="bg-umd-red hover:bg-red-700 text-white"
                 >
-                  Sign Up
+                  <Link to="/login" className="block w-full">Login</Link>
                 </Button>
               </div>
             )}
