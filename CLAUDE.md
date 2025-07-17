@@ -193,19 +193,6 @@ This is the UMD IFAD (International Field Application Development) Portal - a Re
 # Start development server
 npm run dev
 
-# Build for production
-npm run build
-
-# Run linter
-npm run lint
-
-# Preview production build
-npm run preview
-
-# Deploy to GitHub Pages
-npm run deploy
-```
-
 ## Architecture Overview
 
 ### User Roles & Authentication

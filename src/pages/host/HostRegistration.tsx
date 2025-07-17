@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, Briefcase, Save, CheckCircle, Building, MapPin, User, Mail, Phone, Globe, Calendar, Award, Target } from 'lucide-react';
+import { Briefcase, Save, CheckCircle, Building, User, Mail, Phone, Globe, Award, Target } from 'lucide-react';
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';

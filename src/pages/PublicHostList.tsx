@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { MapPin, Globe, Building, Users, Calendar, Shield, Search, Filter, Briefcase, GraduationCap, Check, X } from 'lucide-react';
+import { MapPin, Globe, Building, Users, Calendar, Search, GraduationCap, Check, X } from 'lucide-react';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
@@ -305,7 +305,7 @@ const PublicHostList: React.FC = () => {
 
         {/* Host Cards */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {filteredHosts.map((host, index) => (
+          {filteredHosts.map((host) => (
                           <Card 
                 key={host.id} 
                 className={`group hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-2 bg-white/80 backdrop-blur-sm border-l-4 border-l-umd-red`}

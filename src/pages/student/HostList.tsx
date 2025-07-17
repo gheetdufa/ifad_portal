@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { MapPin, Globe, Building, Users, Calendar, Shield, ExternalLink, Filter, Search } from 'lucide-react';
+import { MapPin, Building, Users, Calendar, Shield, ExternalLink, Search } from 'lucide-react';
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { BookOpen, Users, Calendar, CheckCircle, AlertCircle, ArrowRight, GraduationCap, Target, Award, TrendingUp, Clock, Star } from 'lucide-react';
+import { BookOpen, Users, Calendar, CheckCircle, AlertCircle, Target, Award, TrendingUp, Clock, Star } from 'lucide-react';
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import Badge from '../../components/ui/Badge';
