@@ -64,7 +64,7 @@ const HomePage: React.FC = () => {
     { value: '50+', label: 'Career Fields', icon: Target },
   ];
 
-  const [activeTimeline, setActiveTimeline] = useState<'host' | 'student'>('student');
+  const [activeTimeline, setActiveTimeline] = useState<'host' | 'student'>('host');
 
   const hostTimeline = [
     { phase: 'Host Registration', date: 'Aug 4 - Sep 29, 2025', description: 'Professionals register to mentor students' },
@@ -118,10 +118,7 @@ const HomePage: React.FC = () => {
                 <img 
                   src={IFADLogoStatic} 
                   alt="IFAD Logo" 
-                  className="relative h-[36rem] md:h-[44rem] w-auto drop-shadow-2xl transform hover:scale-110 transition-all duration-500 z-10"
-                  style={{
-                    transform: 'scale(0.8)'
-                  }}
+                  className="relative h-[36rem] md:h-[44rem] w-auto drop-shadow-2xl transform hover:scale-110 transition-all duration-500 z-10 mx-auto block"
                 />
                 
                 {/* Spinning Paperclips (2.png) - Full size, counterclockwise rotation around inner logo */}
@@ -177,20 +174,7 @@ const HomePage: React.FC = () => {
                 </div>
               </div>
               
-              {/* Login button */}
-              <div className="flex justify-center lg:justify-end">
-                <div className="relative group">
-                  <div className="absolute -inset-2 bg-gradient-to-r from-white to-gray-200 rounded-lg blur opacity-0 group-hover:opacity-75 transition duration-500"></div>
-                  <Button 
-                    size="lg" 
-                    variant="primary"
-                    icon={Shield}
-                    className="relative transform hover:scale-110 hover:rotate-1 transition-all duration-500 shadow-2xl hover:shadow-[0_20px_50px_rgba(0,0,0,0.3)] px-10 py-5 text-xl font-bold bg-white text-black hover:bg-gray-100 hover:text-black"
-                  >
-                    <Link to="/login" className="block w-full">Login</Link>
-                  </Button>
-                </div>
-              </div>
+              {/* Login button removed as per request */}
             </div>
           </div>
         </div>
@@ -269,16 +253,6 @@ const HomePage: React.FC = () => {
           <div className="flex justify-center mb-12">
             <div className="bg-umd-gray-100 rounded-full p-1 flex items-center">
               <button
-                onClick={() => setActiveTimeline('student')}
-                className={`px-6 py-3 rounded-full font-semibold transition-all duration-300 ${
-                  activeTimeline === 'student'
-                    ? 'bg-umd-red text-white shadow-lg transform scale-105'
-                    : 'text-umd-gray-600 hover:text-umd-red'
-                }`}
-              >
-                Student Timeline
-              </button>
-              <button
                 onClick={() => setActiveTimeline('host')}
                 className={`px-6 py-3 rounded-full font-semibold transition-all duration-300 ${
                   activeTimeline === 'host'
@@ -287,6 +261,16 @@ const HomePage: React.FC = () => {
                 }`}
               >
                 Host Timeline
+              </button>
+              <button
+                onClick={() => setActiveTimeline('student')}
+                className={`px-6 py-3 rounded-full font-semibold transition-all duration-300 ${
+                  activeTimeline === 'student'
+                    ? 'bg-umd-red text-white shadow-lg transform scale-105'
+                    : 'text-umd-gray-600 hover:text-umd-red'
+                }`}
+              >
+                Student Timeline
               </button>
             </div>
           </div>
