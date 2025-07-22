@@ -1,13 +1,13 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
-export default defineConfig(({ command }) => ({
+export default defineConfig({
   plugins: [react()],
-  base: command === 'build' ? '/ifad_portal/' : '/', // Use GitHub Pages path only for builds
+  base: '/ifad_portal/', // Use GitHub Pages path
   optimizeDeps: {
     exclude: ['lucide-react'],
   },
   build: {
-    outDir: 'dist',
+    outDir: 'docs', // Output to docs for GitHub Pages
   },
-}));
+});
