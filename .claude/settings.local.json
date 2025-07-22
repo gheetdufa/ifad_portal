@@ -10,7 +10,13 @@
       "Bash(rm:*)",
       "Bash(npm install)",
       "Bash(npm run build:*)",
-      "Bash(mv:*)"
+      "Bash(mv:*)",
+      "Bash(mkdir:*)",
+      "Bash(npx cdk:*)",
+      "Bash(npm install:*)",
+      "Bash(chmod:*)",
+      "Bash(ls:*)",
+      "Bash(python3 -m pip install:*)"
     ],
     "deny": []
   }
