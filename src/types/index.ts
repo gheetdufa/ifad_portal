@@ -20,13 +20,66 @@ export interface Student extends User {
 
 export interface Host extends User {
   role: 'host';
+  
+  // Personal Information
+  preferredPrefix?: string; // Mr., Ms., Mrs., Mx., Dr., etc.
+  workEmail: string;
+  preferredPhone: string;
+  
+  // Previous Experience
+  previousHostExperience: boolean;
+  
+  // UMD Affiliation
+  isUmdParent: boolean;
+  isUmdAlumni: boolean;
+  
+  // Work Information
   jobTitle: string;
-  organization: string;
-  industry: string;
-  bio: string;
-  experienceType: 'shadowing' | 'interview' | 'both';
-  location: 'in-person' | 'virtual' | 'both';
+  organization: string; // Company/Org Name
+  companyWebsite?: string;
+  companyAddress: string;
+  cityState: string;
+  zipCode: string;
+  
+  // Career Fields (up to 5)
+  careerFields: string[];
+  careerFieldsOther?: string;
+  
+  // Opportunity Type
+  opportunityType: 'in-person' | 'virtual';
+  
+  // Work Location & Accessibility
+  isDcMetroAccessible?: boolean;
+  workLocationAccessibilityUnsure?: boolean;
+  isPhysicalOffice: boolean; // confirms they're not teleworking
+  isFederalAgency: boolean;
+  
+  // Requirements
+  requiresCitizenship: boolean;
+  requiresBackgroundCheck: boolean;
+  
+  // Organization Description
+  organizationDescription: string;
+  experienceDescription: string;
+  
+  // Capacity & Availability
   maxStudents: number;
+  availableDays: string[]; // ['Mon', 'Tues', 'Wed', 'Thurs', 'Fri']
+  availableWinterSession: boolean;
+  additionalInfo?: string;
+  
+  // Recruitment Interest
+  interestedInRecruitment: boolean;
+  
+  // Optional Identities
+  sharedIdentities: string[];
+  customIdentities?: { religion?: string; other?: string };
+  
+  // Legacy fields for compatibility
+  industry: string; // derived from careerFields[0] or 'Other'
+  bio: string; // derived from organizationDescription
+  experienceType: 'shadowing' | 'interview' | 'both'; // derived from opportunityType
+  location: 'in-person' | 'virtual' | 'both'; // derived from opportunityType
   verified: boolean;
   matchedStudentIds: string[];
   visibilitySettings?: HostVisibilitySettings;
@@ -78,3 +131,73 @@ export interface StudentFavorites {
   rankedPreferences: string[];
   lastUpdated: string;
 }
+
+// Constants for form options
+export const PREFERRED_PREFIXES = [
+  'None',
+  'Mr.',
+  'Ms.',
+  'Mrs.',
+  'Mx.',
+  'Dr.',
+  'Honorable',
+  'Judge',
+  'Officer',
+  'Other'
+] as const;
+
+export const CAREER_FIELDS = [
+  'Agriculture/Environment',
+  'Architecture/Real Estate',
+  'Arts and Entertainment',
+  'Business',
+  'Communications, Journalism, Media',
+  'Computing/Computer Science and Technology',
+  'Consulting',
+  'Cybersecurity',  
+  'Data Science and Data Analytics',
+  'Education',
+  'Engineering',
+  'Government and International Relations',
+  'Health and Healthcare',
+  'Hospitality and Tourism',
+  'Law and Law Enforcement',
+  'Military',
+  'Museums and Library Services',
+  'NonProfit and Social Services',
+  'Policy and Advocacy',
+  'Sales and Marketing',
+  'Science and Research',
+  'Sports and Recreation',
+  'Other'
+] as const;
+
+export const AVAILABLE_DAYS = [
+  'Any weekday (Mon–Fri)',
+  'Mon',
+  'Tues', 
+  'Wed',
+  'Thurs',
+  'Fri'
+] as const;
+
+export const IDENTITY_OPTIONS = [
+  'ADD/ADHD',
+  'Asian American & Pacific Islander',
+  'Black',
+  '(Dis)Ability',
+  'First Generation College Student (former)',
+  'International Student (former)',
+  'Latinx',
+  'LGBTQ+',
+  'Middle Eastern or North African',
+  'Multiracial',
+  'Native American Indian',
+  'Nonbinary',
+  'Religion',
+  'Transgender',
+  'Undocumented/DACA',
+  'Veteran',
+  'Woman',
+  'Other'
+] as const;
