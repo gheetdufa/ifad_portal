@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { 
   Calendar, Save, RotateCcw, Settings, Clock, RefreshCw, 
-  CheckCircle, AlertCircle, Database, ArrowRight, Toggle
+  CheckCircle, AlertCircle, Database, ArrowRight, ToggleLeft
 } from 'lucide-react';
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
@@ -330,7 +330,7 @@ const TimelineManagement: React.FC = () => {
             </div>
             <Button 
               variant="primary" 
-              icon={Toggle} 
+              icon={ToggleLeft} 
               onClick={toggleSemester}
               className="px-6 py-3"
             >
