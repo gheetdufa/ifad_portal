@@ -31,7 +31,7 @@ export interface AwsResponse<T> {
 
 class AwsTimelineService {
   private readonly tableName = 'ifad-timeline-config';
-  private readonly region = process.env.REACT_APP_AWS_REGION || 'us-east-1';
+  private readonly region = import.meta.env.VITE_AWS_REGION || 'us-east-1';
 
   async checkConnection(): Promise<AwsResponse<boolean>> {
     try {

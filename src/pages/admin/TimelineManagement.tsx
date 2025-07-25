@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { 
-  Calendar, Save, RotateCcw, Settings, Clock, RefreshCw, 
+  Calendar, Save, RotateCcw, Clock, RefreshCw, 
   CheckCircle, AlertCircle, Database, ArrowRight, ToggleLeft
 } from 'lucide-react';
 import Card from '../../components/ui/Card';

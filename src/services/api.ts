@@ -28,8 +28,35 @@ export interface ApiResponse<T> {
   message?: string;
 }
 
+export interface DashboardStats {
+  totalHosts: number;
+  verifiedHosts: number;
+  pendingHosts: number;
+  totalStudents: number;
+  completedOrientations: number;
+  submittedApplications: number;
+  totalMatches: number;
+  completedExperiences: number;
+  lastUpdated: string;
+}
+
+export interface RecentActivity {
+  id: string;
+  type: 'host_registration' | 'application_submitted' | 'host_verified' | 'match_completed' | 'orientation_completed';
+  message: string;
+  timestamp: string;
+  entityId?: string;
+}
+
 class ApiService {
-  private baseUrl = process.env.REACT_APP_API_URL || '';
+  private baseUrl = import.meta.env.VITE_API_URL || '';
+  
+  // In-memory storage for demo purposes - replace with actual database calls
+  private hosts: any[] = [];
+  private students: any[] = [];
+  private applications: any[] = [];
+  private matches: any[] = [];
+  private activities: RecentActivity[] = [];
 
   async getPublicHosts(): Promise<ApiResponse<{ hosts: PublicHost[] }>> {
     try {
@@ -52,10 +79,32 @@ class ApiService {
 
   async submitHostRegistration(hostData: any): Promise<ApiResponse<any>> {
     try {
-      // Mock API response
+      const host = { 
+        id: Date.now().toString(), 
+        ...hostData, 
+        verified: false,
+        createdAt: new Date().toISOString()
+      };
+      
+      this.hosts.push(host);
+      
+      // Add to recent activity
+      this.activities.unshift({
+        id: Date.now().toString(),
+        type: 'host_registration',
+        message: `New host registered: ${hostData.firstName} ${hostData.lastName} (${hostData.organization})`,
+        timestamp: new Date().toISOString(),
+        entityId: host.id
+      });
+      
+      // Keep only last 20 activities
+      if (this.activities.length > 20) {
+        this.activities = this.activities.slice(0, 20);
+      }
+      
       return {
         success: true,
-        data: { id: Date.now().toString(), ...hostData },
+        data: host,
         message: 'Host registration submitted successfully'
       };
     } catch (error) {
@@ -70,10 +119,32 @@ class ApiService {
 
   async submitStudentApplication(studentData: any): Promise<ApiResponse<any>> {
     try {
-      // Mock API response
+      const application = { 
+        id: Date.now().toString(), 
+        ...studentData,
+        status: 'submitted',
+        submittedAt: new Date().toISOString()
+      };
+      
+      this.applications.push(application);
+      
+      // Add to recent activity
+      this.activities.unshift({
+        id: Date.now().toString(),
+        type: 'application_submitted',
+        message: `Student application submitted: ${studentData.firstName} ${studentData.lastName}`,
+        timestamp: new Date().toISOString(),
+        entityId: application.id
+      });
+      
+      // Keep only last 20 activities
+      if (this.activities.length > 20) {
+        this.activities = this.activities.slice(0, 20);
+      }
+      
       return {
         success: true,
-        data: { id: Date.now().toString(), ...studentData },
+        data: application,
         message: 'Student application submitted successfully'
       };
     } catch (error) {
@@ -82,6 +153,151 @@ class ApiService {
         success: false,
         data: null,
         message: 'Failed to submit student application'
+      };
+    }
+  }
+
+  async getDashboardStats(): Promise<ApiResponse<DashboardStats>> {
+    try {
+      // Calculate stats from in-memory data
+      const verifiedHosts = this.hosts.filter(h => h.verified).length;
+      const pendingHosts = this.hosts.filter(h => !h.verified).length;
+      const completedOrientations = this.students.filter(s => s.orientationCompleted).length;
+      
+      const stats: DashboardStats = {
+        totalHosts: this.hosts.length,
+        verifiedHosts,
+        pendingHosts,
+        totalStudents: this.students.length,
+        completedOrientations,
+        submittedApplications: this.applications.length,
+        totalMatches: this.matches.length,
+        completedExperiences: this.matches.filter(m => m.status === 'completed').length,
+        lastUpdated: new Date().toISOString()
+      };
+
+      return {
+        success: true,
+        data: stats,
+        message: 'Dashboard stats retrieved successfully'
+      };
+    } catch (error) {
+      console.error('Failed to get dashboard stats:', error);
+      return {
+        success: false,
+        data: {
+          totalHosts: 0,
+          verifiedHosts: 0,
+          pendingHosts: 0,
+          totalStudents: 0,
+          completedOrientations: 0,
+          submittedApplications: 0,
+          totalMatches: 0,
+          completedExperiences: 0,
+          lastUpdated: new Date().toISOString()
+        },
+        message: 'Failed to retrieve dashboard stats'
+      };
+    }
+  }
+
+  async getRecentActivity(): Promise<ApiResponse<RecentActivity[]>> {
+    try {
+      return {
+        success: true,
+        data: this.activities.slice(0, 10), // Return last 10 activities
+        message: 'Recent activity retrieved successfully'
+      };
+    } catch (error) {
+      console.error('Failed to get recent activity:', error);
+      return {
+        success: false,
+        data: [],
+        message: 'Failed to retrieve recent activity'
+      };
+    }
+  }
+
+  async verifyHost(hostId: string): Promise<ApiResponse<any>> {
+    try {
+      const hostIndex = this.hosts.findIndex(h => h.id === hostId);
+      if (hostIndex === -1) {
+        return {
+          success: false,
+          data: null,
+          message: 'Host not found'
+        };
+      }
+
+      this.hosts[hostIndex].verified = true;
+      this.hosts[hostIndex].verifiedAt = new Date().toISOString();
+
+      // Add to recent activity
+      this.activities.unshift({
+        id: Date.now().toString(),
+        type: 'host_verified',
+        message: `Host verified: ${this.hosts[hostIndex].firstName} ${this.hosts[hostIndex].lastName} (${this.hosts[hostIndex].organization})`,
+        timestamp: new Date().toISOString(),
+        entityId: hostId
+      });
+
+      // Keep only last 20 activities
+      if (this.activities.length > 20) {
+        this.activities = this.activities.slice(0, 20);
+      }
+
+      return {
+        success: true,
+        data: this.hosts[hostIndex],
+        message: 'Host verified successfully'
+      };
+    } catch (error) {
+      console.error('Failed to verify host:', error);
+      return {
+        success: false,
+        data: null,
+        message: 'Failed to verify host'
+      };
+    }
+  }
+
+  async createMatch(studentId: string, hostId: string): Promise<ApiResponse<any>> {
+    try {
+      const match = {
+        id: Date.now().toString(),
+        studentId,
+        hostId,
+        status: 'pending',
+        createdAt: new Date().toISOString()
+      };
+
+      this.matches.push(match);
+
+      // Add to recent activity
+      this.activities.unshift({
+        id: Date.now().toString(),
+        type: 'match_completed',
+        message: `New match created`,
+        timestamp: new Date().toISOString(),
+        entityId: match.id
+      });
+
+      // Keep only last 20 activities
+      if (this.activities.length > 20) {
+        this.activities = this.activities.slice(0, 20);
+      }
+
+      return {
+        success: true,
+        data: match,
+        message: 'Match created successfully'
+      };
+    } catch (error) {
+      console.error('Failed to create match:', error);
+      return {
+        success: false,
+        data: null,
+        message: 'Failed to create match'
       };
     }
   }
