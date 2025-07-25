@@ -17,15 +17,15 @@
       "Bash(chmod:*)",
       "Bash(ls:*)",
       "Bash(python3 -m pip install:*)",
-      "Bash(export CDK_DEFAULT_ACCOUNT=\"*\")",
-      "Bash(export CDK_DEFAULT_REGION=\"*\")",
-      "Bash(export AWS_ACCESS_KEY_ID=*)",
-      "Bash(export AWS_SECRET_ACCESS_KEY=*)",
+      "Bash(export CDK_DEFAULT_ACCOUNT=\"863120178071\")",
+      "Bash(export CDK_DEFAULT_REGION=\"us-east-1\")",
       "Bash(npx aws:*)",
       "Bash(curl:*)",
       "Bash(aws cloudformation describe-stacks:*)",
       "Bash(cat:*)",
       "Bash(npm run cdk:outputs:*)",
+      "Bash(export AWS_ACCESS_KEY_ID=*)",
+      "Bash(export AWS_SECRET_ACCESS_KEY=*)",
       "Bash(npm run deploy:staging:*)",
       "Bash(npm run synth:*)",
       "Bash(node:*)",
@@ -36,11 +36,7 @@
       "WebFetch(domain:github.com)",
       "Bash(git add:*)",
       "Bash(git config:*)",
-      "Bash(git push:*)",
-      "Bash(git rebase:*)",
-      "Bash(git stash:*)",
-      "Bash(git checkout:*)",
-      "Bash(git commit:*)"
+      "Bash(git push:*)"
     ],
     "deny": []
   }
