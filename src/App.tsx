@@ -11,6 +11,12 @@ import HostList from './pages/student/HostList';
 import HostDashboard from './pages/host/HostDashboard';
 import HostRegistration from './pages/host/HostRegistration';
 import AdminDashboard from './pages/admin/AdminDashboard';
+import HostManagement from './pages/admin/HostManagement';
+import StudentApplications from './pages/admin/StudentApplications';
+import MatchingSystem from './pages/admin/MatchingSystem';
+import Reports from './pages/admin/Reports';
+import Communication from './pages/admin/Communication';
+import Settings from './pages/admin/Settings';
 
 // Protected Route Component
 const ProtectedRoute: React.FC<{ children: React.ReactNode; allowedRoles: string[] }> = ({ 
@@ -107,7 +113,12 @@ function App() {
                   <ProtectedRoute allowedRoles={['admin']}>
                     <Routes>
                       <Route index element={<AdminDashboard />} />
-                      {/* Add more admin routes here */}
+                      <Route path="hosts" element={<HostManagement />} />
+                      <Route path="applications" element={<StudentApplications />} />
+                      <Route path="matching" element={<MatchingSystem />} />
+                      <Route path="reports" element={<Reports />} />
+                      <Route path="communication" element={<Communication />} />
+                      <Route path="settings" element={<Settings />} />
                     </Routes>
                   </ProtectedRoute>
                 } 
