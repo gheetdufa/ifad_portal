@@ -27,8 +27,7 @@ if (typeof document !== 'undefined') {
   styleSheet.innerText = customStyles;
   document.head.appendChild(styleSheet);
 }
-import IFADLogoStatic from '../assets/ifad_main_logos/10.png';
-import IFADLogoPaperclips from '../assets/ifad_main_logos/2.png';
+import IFADLogoUpdated from '../assets/ifad_logo_updated.png';
 import Collage1 from '../assets/Collage_2024-12-05_19_51_38.jpg';
 import Collage2 from '../assets/Collage_2024-12-05_20_37_53.jpg';
 import Collage3 from '../assets/Collage_2024-12-05_20_59_03.jpg';
@@ -99,7 +98,7 @@ const HomePage: React.FC = () => {
   return (
     <div className="min-h-screen bg-white overflow-hidden">
       {/* Hero Section - Black Background with IFAD Logo */}
-      <section className="relative bg-black text-white overflow-hidden min-h-screen flex items-center">
+      <section className="relative bg-black text-white overflow-hidden min-h-screen flex items-center" role="banner" aria-label="IFAD Program Introduction">
         {/* Animated Background Pattern */}
         <div className="absolute inset-0">
           <div className="absolute top-20 left-10 w-24 h-24 bg-gradient-to-br from-umd-gold to-yellow-400 rounded-full opacity-20 animate-float"></div>
@@ -128,20 +127,10 @@ const HomePage: React.FC = () => {
             }`}>
               <div className="relative">
                 <img 
-                  src={IFADLogoStatic} 
-                  alt="IFAD Logo" 
-                  className="relative h-[32rem] md:h-[40rem] object-contain drop-shadow-2xl transform hover:scale-110 transition-all duration-500 z-10 -ml-8"
-                />
-                <img 
-                  src={IFADLogoPaperclips} 
-                  alt="IFAD Paperclips" 
-                  className="absolute -top-16 -left-32 h-[40rem] md:h-[48rem] w-auto drop-shadow-2xl z-20"
-                  style={{
-                    transformOrigin: 'center',
-                    animation: 'spin 60s linear infinite reverse',
-                    objectFit: 'contain',
-                    maxWidth: 'none'
-                  }}
+                  src={IFADLogoUpdated} 
+                  alt="Intern for a Day Program Logo - University of Maryland Career Center" 
+                  className="relative h-[27rem] md:h-[35rem] object-contain drop-shadow-2xl transform hover:scale-110 transition-all duration-500 z-10 focus:outline-none focus:ring-4 focus:ring-umd-gold/50"
+                  tabIndex="0"
                 />
               </div>
             </div>
@@ -165,8 +154,7 @@ const HomePage: React.FC = () => {
               
               {/* Content Section */}
               <div>
-                <h2 className="text-3xl md:text-4xl font-bold mb-6 text-white flex items-center">
-                  <div className="w-3 h-3 bg-umd-gold rounded-full mr-4 animate-pulse"></div>
+                <h2 className="text-3xl md:text-4xl font-bold mb-6 text-white">
                   What is IFAD?
                 </h2>
                 
@@ -176,7 +164,7 @@ const HomePage: React.FC = () => {
                   <div className="absolute bottom-0 left-0 w-24 h-24 bg-gradient-to-tr from-umd-red/20 to-transparent rounded-full translate-y-12 -translate-x-12"></div>
                   
                   <div className="relative z-10">
-                    <p className="text-lg md:text-xl leading-relaxed text-white font-light mb-6 text-center">
+                    <p className="text-lg md:text-xl leading-relaxed text-white font-light mb-6 text-left">
                       The University Career Center's popular <span className="font-semibold text-umd-gold">Intern for a Day program</span> connects undergraduate UMD students with professionals (including alumni, parents/family members, and other off-campus partners) for <span className="font-semibold text-yellow-200">in-person job shadowing</span> or <span className="font-semibold text-yellow-200">virtual informational interviewing experiences</span> to explore potential career fields of interest.
                     </p>
                     
@@ -206,21 +194,16 @@ const HomePage: React.FC = () => {
 
 
       {/* How To Participate Section - White Background */}
-      <section className="py-20 bg-white">
+      <section className="py-20 bg-white" role="main" aria-label="Participation Information">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl md:text-5xl font-bold text-umd-black mb-8">
-              How To Participate in Intern for a Day
-            </h2>
-          </div>
           
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
             {/* For Professionals */}
             <div className="text-center">
-              <h3 className="text-2xl font-bold text-umd-black mb-6">
+              <h2 className="text-2xl font-bold text-umd-black mb-6">
                 For <span className="text-umd-red">Professionals</span> Interested in<br />
                 Hosting IFAD Students
-              </h3>
+              </h2>
               
               <div className="bg-umd-red rounded-3xl p-8 min-h-96 flex items-center justify-center shadow-2xl transform hover:scale-105 transition-all duration-300">
                 <div className="text-center text-white">
@@ -252,7 +235,7 @@ const HomePage: React.FC = () => {
                     </div>
                   </div>
                   <div className="mt-6">
-                    <Link to="/register/host" className="bg-white text-umd-red px-6 py-2 rounded-full font-bold hover:bg-gray-100 transition-colors">
+                    <Link to="/register/host" className="bg-white text-umd-red px-6 py-2 rounded-full font-bold hover:bg-gray-100 transition-colors focus:outline-none focus:ring-4 focus:ring-white/50" aria-label="Register as a professional host">
                       Register as Host
                     </Link>
                   </div>
@@ -262,10 +245,10 @@ const HomePage: React.FC = () => {
             
             {/* For Students */}
             <div className="text-center">
-              <h3 className="text-2xl font-bold text-umd-black mb-6">
+              <h2 className="text-2xl font-bold text-umd-black mb-6">
                 For <span className="text-umd-red">UMD undergraduate students</span><br />
                 interested in participating in IFAD
-              </h3>
+              </h2>
               
               <div className="bg-umd-red rounded-3xl p-8 min-h-96 flex items-center justify-center shadow-2xl transform hover:scale-105 transition-all duration-300">
                 <div className="text-center text-white">
@@ -297,7 +280,7 @@ const HomePage: React.FC = () => {
                     </div>
                   </div>
                   <div className="mt-6">
-                    <Link to="/register/student" className="bg-white text-umd-red px-6 py-2 rounded-full font-bold hover:bg-gray-100 transition-colors">
+                    <Link to="/register/student" className="bg-white text-umd-red px-6 py-2 rounded-full font-bold hover:bg-gray-100 transition-colors focus:outline-none focus:ring-4 focus:ring-white/50" aria-label="Register as a student participant">
                       Register as Student
                     </Link>
                   </div>
@@ -332,46 +315,58 @@ const HomePage: React.FC = () => {
             </p>
           </div>
           
-          {/* Enhanced Timeline Toggle Buttons */}
+          {/* Enhanced Timeline Toggle Buttons - ADA Compliant */}
           <div className="flex justify-center mb-8">
-            <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-2 flex items-center shadow-2xl border border-gray-200/50">
+            <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-2 flex items-center space-x-2 shadow-2xl border border-gray-200/50" role="tablist" aria-label="Timeline Options">
               <button
                 onClick={() => setActiveTimeline('general')}
-                className={`px-6 py-3 rounded-xl font-bold text-base transition-all duration-500 relative overflow-hidden ${
+                className={`px-6 py-3 rounded-xl font-bold text-base transition-all duration-700 relative overflow-hidden focus:outline-none focus:ring-4 focus:ring-umd-red/50 ${
                   activeTimeline === 'general'
                     ? 'bg-gradient-to-r from-umd-red to-red-600 text-white shadow-xl transform scale-105'
-                    : 'text-umd-gray-600 hover:text-umd-red hover:bg-red-50'
+                    : 'text-gray-800 hover:text-white hover:bg-umd-red/90 bg-white border-2 border-transparent hover:border-umd-red'
                 }`}
+                role="tab"
+                aria-selected={activeTimeline === 'general'}
+                aria-controls="general-timeline-panel"
+                tabIndex={activeTimeline === 'general' ? 0 : -1}
               >
                 <span className="relative z-10">General Timeline</span>
                 {activeTimeline === 'general' && (
-                  <div className="absolute inset-0 bg-gradient-to-r from-umd-red/20 to-red-600/20 animate-pulse"></div>
+                  <div className="absolute inset-0 bg-gradient-to-r from-umd-red/30 to-red-600/30 animate-pulse"></div>
                 )}
               </button>
               <button
                 onClick={() => setActiveTimeline('host')}
-                className={`px-6 py-3 rounded-xl font-bold text-base transition-all duration-500 relative overflow-hidden ${
+                className={`px-6 py-3 rounded-xl font-bold text-base transition-all duration-700 relative overflow-hidden focus:outline-none focus:ring-4 focus:ring-umd-red/50 ${
                   activeTimeline === 'host'
-                    ? 'bg-gradient-to-r from-umd-black to-gray-800 text-white shadow-xl transform scale-105'
-                    : 'text-umd-gray-600 hover:text-umd-black hover:bg-gray-50'
+                    ? 'bg-gradient-to-r from-umd-red to-red-600 text-white shadow-xl transform scale-105'
+                    : 'text-gray-800 hover:text-white hover:bg-umd-red/90 bg-white border-2 border-transparent hover:border-umd-red'
                 }`}
+                role="tab"
+                aria-selected={activeTimeline === 'host'}
+                aria-controls="host-timeline-panel"
+                tabIndex={activeTimeline === 'host' ? 0 : -1}
               >
                 <span className="relative z-10">Host Timeline</span>
                 {activeTimeline === 'host' && (
-                  <div className="absolute inset-0 bg-gradient-to-r from-gray-800/20 to-black/20 animate-pulse"></div>
+                  <div className="absolute inset-0 bg-gradient-to-r from-umd-red/30 to-red-600/30 animate-pulse"></div>
                 )}
               </button>
               <button
                 onClick={() => setActiveTimeline('student')}
-                className={`px-6 py-3 rounded-xl font-bold text-base transition-all duration-500 relative overflow-hidden ${
+                className={`px-6 py-3 rounded-xl font-bold text-base transition-all duration-700 relative overflow-hidden focus:outline-none focus:ring-4 focus:ring-umd-red/50 ${
                   activeTimeline === 'student'
-                    ? 'bg-gradient-to-r from-umd-gold to-yellow-500 text-black shadow-xl transform scale-105'
-                    : 'text-umd-gray-600 hover:text-umd-gold hover:bg-yellow-50'
+                    ? 'bg-gradient-to-r from-umd-red to-red-600 text-white shadow-xl transform scale-105'
+                    : 'text-gray-800 hover:text-white hover:bg-umd-red/90 bg-white border-2 border-transparent hover:border-umd-red'
                 }`}
+                role="tab"
+                aria-selected={activeTimeline === 'student'}
+                aria-controls="student-timeline-panel"
+                tabIndex={activeTimeline === 'student' ? 0 : -1}
               >
                 <span className="relative z-10">Student Timeline</span>
                 {activeTimeline === 'student' && (
-                  <div className="absolute inset-0 bg-gradient-to-r from-umd-gold/20 to-yellow-500/20 animate-pulse"></div>
+                  <div className="absolute inset-0 bg-gradient-to-r from-umd-red/30 to-red-600/30 animate-pulse"></div>
                 )}
               </button>
             </div>
@@ -380,29 +375,31 @@ const HomePage: React.FC = () => {
 
           {/* General Timeline */}
           {activeTimeline === 'general' && (
-            <div className="max-w-6xl mx-auto animate-fadeIn">
+            <div className="max-w-6xl mx-auto animate-fadeIn" role="tabpanel" id="general-timeline-panel" aria-labelledby="general-timeline-tab">
               {/* Semester Toggle */}
               <div className="flex justify-center mb-8">
                 <div className="bg-white/60 backdrop-blur-sm rounded-2xl p-1 flex items-center shadow-xl border border-white/20">
                   <button
                     onClick={() => setActiveGeneralSemester('fall')}
-                    className={`px-6 py-2 rounded-xl font-bold text-sm transition-all duration-500 ${
+                    className={`px-6 py-2 rounded-xl font-bold text-sm transition-all duration-500 focus:outline-none focus:ring-4 focus:ring-orange-500/50 ${
                       activeGeneralSemester === 'fall'
                         ? 'bg-gradient-to-r from-orange-500 to-red-500 text-white shadow-lg transform scale-105'
-                        : 'text-umd-gray-600 hover:text-orange-600 hover:bg-orange-50'
+                        : 'text-gray-800 hover:text-white hover:bg-orange-500 bg-white border-2 border-transparent hover:border-orange-500'
                     }`}
+                    aria-pressed={activeGeneralSemester === 'fall'}
                   >
-                    🍂 Fall Semester
+                    <span aria-hidden="true">🍂</span> Fall Semester
                   </button>
                   <button
                     onClick={() => setActiveGeneralSemester('spring')}
-                    className={`px-6 py-2 rounded-xl font-bold text-sm transition-all duration-500 ${
+                    className={`px-6 py-2 rounded-xl font-bold text-sm transition-all duration-500 focus:outline-none focus:ring-4 focus:ring-green-500/50 ${
                       activeGeneralSemester === 'spring'
                         ? 'bg-gradient-to-r from-green-500 to-emerald-500 text-white shadow-lg transform scale-105'
-                        : 'text-umd-gray-600 hover:text-green-600 hover:bg-green-50'
+                        : 'text-gray-800 hover:text-white hover:bg-green-500 bg-white border-2 border-transparent hover:border-green-500'
                     }`}
+                    aria-pressed={activeGeneralSemester === 'spring'}
                   >
-                    🌸 Spring Semester
+                    <span aria-hidden="true">🌸</span> Spring Semester
                   </button>
                 </div>
               </div>
@@ -484,7 +481,7 @@ const HomePage: React.FC = () => {
 
           {/* Host Timeline */}
           {activeTimeline === 'host' && (
-            <div className="max-w-4xl mx-auto animate-fadeIn">
+            <div className="max-w-4xl mx-auto animate-fadeIn" role="tabpanel" id="host-timeline-panel" aria-labelledby="host-timeline-tab">
               <div className="bg-gradient-to-br from-orange-50 to-red-50 rounded-2xl p-8 shadow-2xl border border-orange-200/50 relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-bl from-orange-200/30 to-transparent rounded-full -translate-y-12 translate-x-12"></div>
                 <div className="absolute bottom-0 left-0 w-20 h-20 bg-gradient-to-tr from-red-300/30 to-transparent rounded-full translate-y-10 -translate-x-10"></div>
@@ -541,7 +538,7 @@ const HomePage: React.FC = () => {
 
           {/* Student Timeline */}
           {activeTimeline === 'student' && (
-            <div className="max-w-4xl mx-auto animate-fadeIn">
+            <div className="max-w-4xl mx-auto animate-fadeIn" role="tabpanel" id="student-timeline-panel" aria-labelledby="student-timeline-tab">
               <div className="bg-gradient-to-br from-orange-50 to-red-50 rounded-2xl p-8 shadow-2xl border border-orange-200/50 relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-bl from-orange-200/30 to-transparent rounded-full -translate-y-12 translate-x-12"></div>
                 <div className="absolute bottom-0 left-0 w-20 h-20 bg-gradient-to-tr from-red-300/30 to-transparent rounded-full translate-y-10 -translate-x-10"></div>
@@ -698,9 +695,11 @@ const HomePage: React.FC = () => {
                       <button
                         key={index}
                         onClick={() => setCurrentImageIndex(index)}
-                        className={`w-3 h-3 rounded-full transition-all duration-300 ${
+                        className={`w-3 h-3 rounded-full transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-umd-gold ${
                           index === currentImageIndex ? 'bg-white shadow-lg scale-125' : 'bg-white/50 hover:bg-white/75'
                         }`}
+                        aria-label={`View image ${index + 1} of ${galleryImages.length}: ${galleryImages[index].caption}`}
+                        aria-pressed={index === currentImageIndex}
                       />
                     ))}
                   </div>
@@ -713,15 +712,6 @@ const HomePage: React.FC = () => {
             </div>
           </div>
           
-          {/* Contact Information */}
-          <div className="mt-16 text-center">
-            <p className="text-lg">
-              Questions?{' '}
-              <a href="mailto:IFAD@UMD.EDU" className="underline hover:text-umd-gold transition-colors font-bold">
-                Email IFAD@UMD.EDU
-              </a>
-            </p>
-          </div>
         </div>
       </section>
     </div>

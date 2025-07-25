@@ -1,28 +1,76 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { 
   Users, UserCheck, FileText, BarChart3, Settings, TrendingUp, CheckCircle, 
   Clock, Mail, Database, Download, Upload, Shield, Target,
-  Play, Pause, RotateCcw
+  Play, Pause, RotateCcw, Loader2, RefreshCw, AlertCircle
 } from 'lucide-react';
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import Badge from '../../components/ui/Badge';
+import AwsStatusChecker from '../../components/admin/AwsStatusChecker';
+import { apiService, DashboardStats, RecentActivity } from '../../services/api';
 
 const AdminDashboard: React.FC = () => {
-  // const [currentStep, setCurrentStep] = useState('step2b'); // Current active step - unused
+  const [dashboardStats, setDashboardStats] = useState<DashboardStats | null>(null);
+  const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
 
-  // Mock admin data - in production, this would come from API
-  const programStats = {
-    totalHosts: 127,
-    verifiedHosts: 89,
-    pendingHosts: 8,
-    totalStudents: 234,
-    completedOrientations: 189,
-    submittedApplications: 156,
-    totalMatches: 78,
-    completedExperiences: 12,
+  // Data fetching functions
+  const fetchDashboardData = async (showLoading = true) => {
+    try {
+      if (showLoading) {
+        setIsLoading(true);
+      } else {
+        setIsRefreshing(true);
+      }
+      setError(null);
+
+      const [statsResponse, activityResponse] = await Promise.all([
+        apiService.getDashboardStats(),
+        apiService.getRecentActivity()
+      ]);
+
+      if (statsResponse.success) {
+        setDashboardStats(statsResponse.data);
+      } else {
+        setError(statsResponse.message || 'Failed to load dashboard stats');
+      }
+
+      if (activityResponse.success) {
+        setRecentActivity(activityResponse.data);
+      }
+
+      setLastRefresh(new Date());
+    } catch (error) {
+      console.error('Failed to fetch dashboard data:', error);
+      setError('Failed to load dashboard data');
+    } finally {
+      setIsLoading(false);
+      setIsRefreshing(false);
+    }
   };
+
+  const handleRefresh = () => {
+    fetchDashboardData(false);
+  };
+
+  // Load data on component mount
+  useEffect(() => {
+    fetchDashboardData();
+  }, []);
+
+  // Auto-refresh every 2 minutes
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchDashboardData(false);
+    }, 2 * 60 * 1000);
+
+    return () => clearInterval(interval);
+  }, []);
 
   // IFAD Workflow Steps
   const workflowSteps = [
@@ -136,63 +184,66 @@ const AdminDashboard: React.FC = () => {
     }
   ];
 
-  const recentActivity = [
-    {
-      id: 1,
-      type: 'host_registration',
-      message: 'New host registered: Sarah Johnson (Microsoft)',
-      timestamp: '2 hours ago',
-    },
-    {
-      id: 2,
-      type: 'application_submitted',
-      message: '5 new student applications submitted',
-      timestamp: '4 hours ago',
-    },
-    {
-      id: 3,
-      type: 'host_verified',
-      message: 'Host verified: David Kim (Goldman Sachs)',
-      timestamp: '6 hours ago',
-    },
-    {
-      id: 4,
-      type: 'match_completed',
-      message: 'Manual matching completed: 12 new matches',
-      timestamp: '1 day ago',
-    },
-  ];
+  // Format timestamp for display
+  const formatTimestamp = (timestamp: string) => {
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / (1000 * 60));
+    
+    if (diffMins < 1) return 'Just now';
+    if (diffMins === 1) return '1 minute ago';
+    if (diffMins < 60) return `${diffMins} minutes ago`;
+    
+    const diffHours = Math.floor(diffMins / 60);
+    if (diffHours === 1) return '1 hour ago';
+    if (diffHours < 24) return `${diffHours} hours ago`;
+    
+    const diffDays = Math.floor(diffHours / 24);
+    if (diffDays === 1) return '1 day ago';
+    if (diffDays < 7) return `${diffDays} days ago`;
+    
+    return date.toLocaleDateString();
+  };
 
-  const quickStats = [
-    { 
-      label: 'Total Hosts', 
-      value: programStats.totalHosts.toString(), 
-      change: '+12%', 
-      icon: Users,
-      color: 'text-blue-600',
-    },
-    { 
-      label: 'Applications', 
-      value: programStats.submittedApplications.toString(), 
-      change: '+23%', 
-      icon: FileText,
-      color: 'text-green-600',
-    },
-    { 
-      label: 'Matches Made', 
-      value: programStats.totalMatches.toString(), 
-      change: '+18%', 
-      icon: UserCheck,
-      color: 'text-purple-600',
-    },
-    { 
-      label: 'Completion Rate', 
-      value: '89%', 
-      change: '+5%', 
-      icon: TrendingUp,
-      color: 'text-umd-red',
-    },
-  ];
+  const getQuickStats = () => {
+    if (!dashboardStats) return [];
+    
+    const completionRate = dashboardStats.totalMatches > 0 
+      ? Math.round((dashboardStats.completedExperiences / dashboardStats.totalMatches) * 100)
+      : 0;
+
+    return [
+      { 
+        label: 'Total Hosts', 
+        value: dashboardStats.totalHosts.toString(), 
+        change: dashboardStats.totalHosts > 0 ? 'Active' : 'No hosts yet', 
+        icon: Users,
+        color: 'text-blue-600',
+      },
+      { 
+        label: 'Applications', 
+        value: dashboardStats.submittedApplications.toString(), 
+        change: dashboardStats.submittedApplications > 0 ? 'Submitted' : 'No applications yet', 
+        icon: FileText,
+        color: 'text-green-600',
+      },
+      { 
+        label: 'Matches Made', 
+        value: dashboardStats.totalMatches.toString(), 
+        change: dashboardStats.totalMatches > 0 ? 'Created' : 'No matches yet', 
+        icon: UserCheck,
+        color: 'text-purple-600',
+      },
+      { 
+        label: 'Completion Rate', 
+        value: `${completionRate}%`, 
+        change: dashboardStats.completedExperiences > 0 ? 'Completed' : 'In progress', 
+        icon: TrendingUp,
+        color: 'text-umd-red',
+      },
+    ];
+  };
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -224,34 +275,81 @@ const AdminDashboard: React.FC = () => {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* Header */}
       <div className="mb-8">
-        <div className="flex items-center space-x-3 mb-4">
-          <Shield className="w-8 h-8 text-umd-red" />
-          <h1 className="text-3xl font-bold text-umd-black">Admin Dashboard</h1>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-3 mb-4">
+            <Shield className="w-8 h-8 text-umd-red" />
+            <h1 className="text-3xl font-bold text-umd-black">Admin Dashboard</h1>
+          </div>
+          <div className="flex items-center space-x-2">
+            {lastRefresh && (
+              <span className="text-sm text-umd-gray-500">
+                Last updated: {lastRefresh.toLocaleTimeString()}
+              </span>
+            )}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleRefresh}
+              disabled={isRefreshing}
+              icon={isRefreshing ? Loader2 : RefreshCw}
+              className={isRefreshing ? 'animate-spin' : ''}
+            >
+              {isRefreshing ? 'Updating...' : 'Refresh'}
+            </Button>
+          </div>
         </div>
         <p className="text-lg text-umd-gray-600">
           Manage the IFAD program and monitor key metrics
         </p>
+        
+        {error && (
+          <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg flex items-center space-x-2">
+            <AlertCircle className="w-5 h-5 text-red-600" />
+            <span className="text-red-800">{error}</span>
+          </div>
+        )}
+      </div>
+
+      {/* AWS Status Checker */}
+      <div className="mb-8">
+        <AwsStatusChecker />
       </div>
 
       {/* Quick Stats */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        {quickStats.map((stat, index) => {
-          const Icon = stat.icon;
-          return (
-            <Card key={index} className="group hover:shadow-lg transition-all duration-300">
+        {isLoading ? (
+          // Loading skeleton
+          Array.from({ length: 4 }).map((_, index) => (
+            <Card key={index} className="animate-pulse">
               <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-umd-gray-600">{stat.label}</p>
-                  <p className="text-2xl font-bold text-umd-black group-hover:text-umd-red transition-colors duration-300">{stat.value}</p>
-                  <p className={`text-sm ${stat.color} font-medium`}>
-                    {stat.change} from last cycle
-                  </p>
+                <div className="flex-1">
+                  <div className="h-4 bg-umd-gray-200 rounded w-20 mb-2"></div>
+                  <div className="h-8 bg-umd-gray-200 rounded w-16 mb-2"></div>
+                  <div className="h-4 bg-umd-gray-200 rounded w-24"></div>
                 </div>
-                <Icon className={`w-8 h-8 ${stat.color} group-hover:scale-110 transition-transform duration-300`} />
+                <div className="w-8 h-8 bg-umd-gray-200 rounded"></div>
               </div>
             </Card>
-          );
-        })}
+          ))
+        ) : (
+          getQuickStats().map((stat, index) => {
+            const Icon = stat.icon;
+            return (
+              <Card key={index} className="group hover:shadow-lg transition-all duration-300">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-umd-gray-600">{stat.label}</p>
+                    <p className="text-2xl font-bold text-umd-black group-hover:text-umd-red transition-colors duration-300">{stat.value}</p>
+                    <p className={`text-sm ${stat.color} font-medium`}>
+                      {stat.change}
+                    </p>
+                  </div>
+                  <Icon className={`w-8 h-8 ${stat.color} group-hover:scale-110 transition-transform duration-300`} />
+                </div>
+              </Card>
+            );
+          })
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -317,7 +415,7 @@ const AdminDashboard: React.FC = () => {
                       <div className="space-y-2">
                         <div className="flex items-center justify-between">
                           <span className="text-sm text-umd-gray-700">Review pending hosts</span>
-                          <Badge variant="error" size="sm">{programStats.pendingHosts} pending</Badge>
+                          <Badge variant="error" size="sm">{dashboardStats?.pendingHosts || 0} pending</Badge>
                         </div>
                         <div className="flex items-center justify-between">
                           <span className="text-sm text-umd-gray-700">Send reminder emails</span>
@@ -397,24 +495,35 @@ const AdminDashboard: React.FC = () => {
           {/* Program Overview */}
           <Card className="group hover:shadow-lg transition-shadow duration-300">
             <h3 className="text-lg font-semibold text-umd-black mb-4">Program Overview</h3>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="text-center p-3 bg-umd-gray-50 rounded-lg">
-                <p className="text-2xl font-bold text-umd-black">{programStats.verifiedHosts}</p>
-                <p className="text-xs text-umd-gray-600">Verified Hosts</p>
+            {isLoading ? (
+              <div className="grid grid-cols-2 gap-4 animate-pulse">
+                {Array.from({ length: 4 }).map((_, index) => (
+                  <div key={index} className="text-center p-3 bg-umd-gray-50 rounded-lg">
+                    <div className="h-8 bg-umd-gray-200 rounded w-8 mx-auto mb-2"></div>
+                    <div className="h-3 bg-umd-gray-200 rounded w-16 mx-auto"></div>
+                  </div>
+                ))}
               </div>
-              <div className="text-center p-3 bg-umd-gray-50 rounded-lg">
-                <p className="text-2xl font-bold text-umd-black">{programStats.completedOrientations}</p>
-                <p className="text-xs text-umd-gray-600">Orientations</p>
+            ) : (
+              <div className="grid grid-cols-2 gap-4">
+                <div className="text-center p-3 bg-umd-gray-50 rounded-lg">
+                  <p className="text-2xl font-bold text-umd-black">{dashboardStats?.verifiedHosts || 0}</p>
+                  <p className="text-xs text-umd-gray-600">Verified Hosts</p>
+                </div>
+                <div className="text-center p-3 bg-umd-gray-50 rounded-lg">
+                  <p className="text-2xl font-bold text-umd-black">{dashboardStats?.completedOrientations || 0}</p>
+                  <p className="text-xs text-umd-gray-600">Orientations</p>
+                </div>
+                <div className="text-center p-3 bg-umd-gray-50 rounded-lg">
+                  <p className="text-2xl font-bold text-umd-black">{dashboardStats?.submittedApplications || 0}</p>
+                  <p className="text-xs text-umd-gray-600">Applications</p>
+                </div>
+                <div className="text-center p-3 bg-umd-gray-50 rounded-lg">
+                  <p className="text-2xl font-bold text-umd-black">{dashboardStats?.totalMatches || 0}</p>
+                  <p className="text-xs text-umd-gray-600">Matches</p>
+                </div>
               </div>
-              <div className="text-center p-3 bg-umd-gray-50 rounded-lg">
-                <p className="text-2xl font-bold text-umd-black">{programStats.submittedApplications}</p>
-                <p className="text-xs text-umd-gray-600">Applications</p>
-              </div>
-              <div className="text-center p-3 bg-umd-gray-50 rounded-lg">
-                <p className="text-2xl font-bold text-umd-black">{programStats.totalMatches}</p>
-                <p className="text-xs text-umd-gray-600">Matches</p>
-              </div>
-            </div>
+            )}
           </Card>
 
           {/* Quick Actions */}
@@ -449,15 +558,34 @@ const AdminDashboard: React.FC = () => {
           <Card className="group hover:shadow-lg transition-shadow duration-300">
             <h3 className="text-lg font-semibold text-umd-black mb-4">Recent Activity</h3>
             <div className="space-y-3">
-              {recentActivity.map((activity) => (
-                <div key={activity.id} className="flex items-start space-x-3 p-2 hover:bg-umd-gray-50 rounded">
-                  <div className="w-2 h-2 bg-umd-red rounded-full mt-2"></div>
-                  <div className="flex-1">
-                    <p className="text-sm text-umd-black">{activity.message}</p>
-                    <p className="text-xs text-umd-gray-500">{activity.timestamp}</p>
+              {isLoading ? (
+                // Loading skeleton for activities
+                Array.from({ length: 4 }).map((_, index) => (
+                  <div key={index} className="flex items-start space-x-3 p-2 animate-pulse">
+                    <div className="w-2 h-2 bg-umd-gray-200 rounded-full mt-2"></div>
+                    <div className="flex-1">
+                      <div className="h-4 bg-umd-gray-200 rounded w-full mb-1"></div>
+                      <div className="h-3 bg-umd-gray-200 rounded w-20"></div>
+                    </div>
                   </div>
+                ))
+              ) : recentActivity.length > 0 ? (
+                recentActivity.map((activity) => (
+                  <div key={activity.id} className="flex items-start space-x-3 p-2 hover:bg-umd-gray-50 rounded">
+                    <div className="w-2 h-2 bg-umd-red rounded-full mt-2"></div>
+                    <div className="flex-1">
+                      <p className="text-sm text-umd-black">{activity.message}</p>
+                      <p className="text-xs text-umd-gray-500">{formatTimestamp(activity.timestamp)}</p>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="text-center py-8">
+                  <Clock className="w-8 h-8 text-umd-gray-400 mx-auto mb-2" />
+                  <p className="text-sm text-umd-gray-500">No recent activity</p>
+                  <p className="text-xs text-umd-gray-400">Activity will appear here as users interact with the system</p>
                 </div>
-              ))}
+              )}
             </div>
           </Card>
 
