@@ -433,6 +433,9 @@ const AdminDashboard: React.FC = () => {
               <Button variant="outline" icon={BarChart3} className="w-full justify-start">
                 <Link to="/admin/reports">Reports & Analytics</Link>
               </Button>
+              <Button variant="outline" icon={Clock} className="w-full justify-start">
+                <Link to="/admin/timeline">Timeline Management</Link>
+              </Button>
               <Button variant="outline" icon={Mail} className="w-full justify-start">
                 <Link to="/admin/communication">Send Communications</Link>
               </Button>

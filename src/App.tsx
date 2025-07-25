@@ -17,6 +17,7 @@ import MatchingSystem from './pages/admin/MatchingSystem';
 import Reports from './pages/admin/Reports';
 import Communication from './pages/admin/Communication';
 import Settings from './pages/admin/Settings';
+import TimelineManagement from './pages/admin/TimelineManagement';
 
 // Protected Route Component
 const ProtectedRoute: React.FC<{ children: React.ReactNode; allowedRoles: string[] }> = ({ 
@@ -119,6 +120,7 @@ function App() {
                       <Route path="reports" element={<Reports />} />
                       <Route path="communication" element={<Communication />} />
                       <Route path="settings" element={<Settings />} />
+                      <Route path="timeline" element={<TimelineManagement />} />
                     </Routes>
                   </ProtectedRoute>
                 } 
