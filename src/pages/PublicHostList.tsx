@@ -5,6 +5,7 @@ import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import Badge from '../components/ui/Badge';
 import SmallerLogo from '../assets/Smaller_logo.png';
+import { apiService } from '../services/api';
 
 interface PublicHost {
   id: string;
@@ -35,8 +36,19 @@ const PublicHostList: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Convert CSV data to usable format - sample hosts with redacted personal info
-    const processedHosts: PublicHost[] = [
+    loadHosts();
+  }, []);
+
+  const loadHosts = async () => {
+    try {
+      setIsLoading(true);
+      const response = await apiService.getPublicHosts();
+      
+      if (response.success && response.data.hosts) {
+        setHosts(response.data.hosts);
+      } else {
+        // Fallback to sample data if API fails
+        const processedHosts: PublicHost[] = [
       {
         id: '1',
         ifadOption: '60-minute virtual informational interviews',
@@ -197,11 +209,17 @@ const PublicHostList: React.FC = () => {
         umdAlumni: 'Yes',
         additionalInfo: 'In-person experience includes Capitol Hill meetings and agricultural advocacy.'
       }
-    ];
-
-    setHosts(processedHosts);
-    setIsLoading(false);
-  }, []);
+        ];
+        
+        setHosts(processedHosts);
+      }
+    } catch (error) {
+      console.error('Failed to load hosts:', error);
+      setHosts([]); // Set empty array on error
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const allCareerFields = Array.from(new Set(hosts.flatMap(host => host.careerFields)));
 
