@@ -1,11 +1,60 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { User, Calendar, CheckCircle, Users, Edit, Mail, Phone, MapPin, Building, Briefcase, Settings, Star, Clock } from 'lucide-react';
+import { User, Calendar, CheckCircle, Users, Edit, Mail, Phone, MapPin, Building, Briefcase, Settings, Star, Clock, UserPlus, RefreshCw } from 'lucide-react';
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import Badge from '../../components/ui/Badge';
+import { apiService } from '../../services/api';
 
 const HostDashboard: React.FC = () => {
+  const [registrationStatus, setRegistrationStatus] = useState('not_registered'); // 'not_registered', 'registered', 'pending'
+  const [currentSemester] = useState('Spring 2025');
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Check registration status on component mount
+  useEffect(() => {
+    checkRegistrationStatus();
+  }, [currentSemester]);
+
+  const checkRegistrationStatus = async () => {
+    try {
+      const response = await apiService.getSemesterRegistration(currentSemester);
+      if (response.success && response.data.registered && response.data.registration) {
+        setRegistrationStatus(response.data.registration.status === 'approved' ? 'registered' : 'pending');
+      } else {
+        setRegistrationStatus('not_registered');
+      }
+    } catch (error) {
+      console.error('Error checking registration status:', error);
+      setRegistrationStatus('not_registered');
+    }
+  };
+
+  const handleSemesterRegistration = async () => {
+    setIsLoading(true);
+    try {
+      const registrationData = {
+        semester: currentSemester,
+        maxStudents: hostData.maxStudents,
+        availableDays: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
+        experienceType: 'both' as const,
+        additionalInfo: '',
+      };
+
+      const response = await apiService.registerForSemester(registrationData);
+      if (response.success) {
+        setRegistrationStatus('pending');
+      } else {
+        alert('Failed to register: ' + response.message);
+      }
+    } catch (error) {
+      console.error('Error registering for semester:', error);
+      alert('Failed to register for semester');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
   // Mock host data - in production, this would come from API
   const hostData = {
     firstName: 'Ms.',
@@ -150,6 +199,164 @@ const HostDashboard: React.FC = () => {
               </Card>
             );
           })}
+        </div>
+
+        {/* Semester Registration Section */}
+        <div className="mb-12">
+          <Card className={`group hover:shadow-2xl transition-all duration-500 hover:-translate-y-1 relative overflow-hidden border-2 ${
+            registrationStatus === 'registered' 
+              ? 'bg-gradient-to-br from-green-50 via-emerald-50 to-green-50 border-green-200 hover:border-green-300' 
+              : registrationStatus === 'pending'
+              ? 'bg-gradient-to-br from-yellow-50 via-amber-50 to-yellow-50 border-yellow-200 hover:border-yellow-300'
+              : 'bg-gradient-to-br from-red-50 via-pink-50 to-red-50 border-red-200 hover:border-red-300'
+          }`}>
+            <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+            <div className="relative z-10">
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center space-x-4">
+                  <div className={`p-3 rounded-full ${
+                    registrationStatus === 'registered' 
+                      ? 'bg-green-100 text-green-600' 
+                      : registrationStatus === 'pending'
+                      ? 'bg-yellow-100 text-yellow-600'
+                      : 'bg-red-100 text-red-600'
+                  }`}>
+                    {registrationStatus === 'registered' ? (
+                      <CheckCircle className="w-8 h-8" />
+                    ) : registrationStatus === 'pending' ? (
+                      <Clock className="w-8 h-8" />
+                    ) : (
+                      <UserPlus className="w-8 h-8" />
+                    )}
+                  </div>
+                  <div>
+                    <h2 className="text-3xl font-bold text-umd-black">
+                      {currentSemester} Registration
+                    </h2>
+                    <p className="text-lg text-umd-gray-600">
+                      {registrationStatus === 'registered' 
+                        ? 'You are registered for this semester' 
+                        : registrationStatus === 'pending'
+                        ? 'Your registration is pending approval'
+                        : 'Register to host students this semester'}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center space-x-3">
+                  {registrationStatus === 'registered' ? (
+                    <Badge variant="success" className="text-lg px-4 py-2">
+                      <CheckCircle className="w-5 h-5 mr-2" />
+                      Registered
+                    </Badge>
+                  ) : registrationStatus === 'pending' ? (
+                    <Badge variant="warning" className="text-lg px-4 py-2">
+                      <Clock className="w-5 h-5 mr-2" />
+                      Pending
+                    </Badge>
+                  ) : (
+                    <Badge variant="error" className="text-lg px-4 py-2">
+                      <UserPlus className="w-5 h-5 mr-2" />
+                      Not Registered
+                    </Badge>
+                  )}
+                </div>
+              </div>
+
+              {/* Registration Action Area */}
+              <div className={`p-6 rounded-2xl ${
+                registrationStatus === 'registered' 
+                  ? 'bg-green-100/50 border border-green-200' 
+                  : registrationStatus === 'pending'
+                  ? 'bg-yellow-100/50 border border-yellow-200'
+                  : 'bg-red-100/50 border border-red-200'
+              }`}>
+                {registrationStatus === 'not_registered' ? (
+                  <div className="text-center">
+                    <h3 className="text-2xl font-bold text-umd-black mb-4">Ready to Host Again?</h3>
+                    <p className="text-lg text-umd-gray-600 mb-6 max-w-2xl mx-auto">
+                      Register for {currentSemester} to connect with new students and continue making an impact through the IFAD program. Your profile information is already saved.
+                    </p>
+                    <div className="flex justify-center space-x-4">
+                      <Button 
+                        variant="primary" 
+                        size="lg" 
+                        className="bg-gradient-to-r from-umd-red to-red-600 hover:from-red-600 hover:to-red-700 text-xl px-8 py-4 hover:scale-105 transition-all duration-300 shadow-lg"
+                        icon={UserPlus}
+                        onClick={handleSemesterRegistration}
+                        disabled={isLoading}
+                      >
+                        {isLoading ? 'Registering...' : `Register for ${currentSemester}`}
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        size="lg" 
+                        className="text-xl px-6 py-4 hover:bg-umd-gray-100 hover:scale-105 transition-all duration-300"
+                        icon={Edit}
+                      >
+                        Update Profile First
+                      </Button>
+                    </div>
+                  </div>
+                ) : registrationStatus === 'pending' ? (
+                  <div className="text-center">
+                    <h3 className="text-2xl font-bold text-umd-black mb-4">Registration Submitted</h3>
+                    <p className="text-lg text-umd-gray-600 mb-6">
+                      Thank you for registering for {currentSemester}! Our team is reviewing your registration and will confirm your participation soon.
+                    </p>
+                    <div className="flex justify-center space-x-4">
+                      <Button 
+                        variant="outline" 
+                        size="lg" 
+                        className="text-xl px-6 py-4 hover:bg-yellow-100 hover:scale-105 transition-all duration-300"
+                        icon={RefreshCw}
+                      >
+                        Check Status
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        size="lg" 
+                        className="text-xl px-6 py-4 hover:bg-umd-gray-100 hover:scale-105 transition-all duration-300"
+                        icon={Edit}
+                      >
+                        Edit Registration
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center">
+                    <h3 className="text-2xl font-bold text-umd-black mb-4">You're All Set!</h3>
+                    <p className="text-lg text-umd-gray-600 mb-6">
+                      You are registered for {currentSemester}. Student matching will begin soon, and you'll be notified when students are matched with you.
+                    </p>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
+                      <div className="p-4 bg-white/70 rounded-xl border border-green-200">
+                        <h4 className="font-bold text-green-700 mb-2">Registration Status</h4>
+                        <p className="text-green-600">✓ Confirmed</p>
+                      </div>
+                      <div className="p-4 bg-white/70 rounded-xl border border-green-200">
+                        <h4 className="font-bold text-green-700 mb-2">Next Step</h4>
+                        <p className="text-green-600">Student matching begins Nov 1</p>
+                      </div>
+                      <div className="p-4 bg-white/70 rounded-xl border border-green-200">
+                        <h4 className="font-bold text-green-700 mb-2">Max Students</h4>
+                        <p className="text-green-600">{hostData.maxStudents} students</p>
+                      </div>
+                    </div>
+                    <div className="flex justify-center space-x-4 mt-6">
+                      <Button 
+                        variant="outline" 
+                        size="lg" 
+                        className="text-xl px-6 py-4 hover:bg-green-100 hover:scale-105 transition-all duration-300"
+                        icon={Edit}
+                      >
+                        Update Registration
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </Card>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">

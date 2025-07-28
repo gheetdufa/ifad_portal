@@ -270,7 +270,7 @@ const PublicHostList: React.FC = () => {
           <p className="text-lg text-umd-gray-600 max-w-3xl mx-auto leading-relaxed">
             Explore our community of professionals offering virtual and in-person shadowing opportunities. 
             <span className="block mt-2 text-sm text-umd-gray-500">
-              *Personal contact information is redacted for privacy
+              *Personal contact information is redacted for privacy and will only be shared with the student(s) matched with the host
             </span>
           </p>
         </div>
