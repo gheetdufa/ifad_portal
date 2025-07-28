@@ -36,7 +36,9 @@
       "WebFetch(domain:github.com)",
       "Bash(git add:*)",
       "Bash(git config:*)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "WebFetch(domain:vitejs.dev)",
+      "WebFetch(domain:vite.dev)"
     ],
     "deny": []
   }
