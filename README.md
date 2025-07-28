@@ -2,6 +2,25 @@
 
 A React/TypeScript application for the University of Maryland's Intern For A Day program. This guide will help you set up the development environment and start contributing to the project.
 
+## 🌐 Deployment
+
+### GitHub Pages Deployment
+
+The application is automatically deployed to GitHub Pages when you push to the main branch.
+
+**To deploy manually:**
+```bash
+npm run deploy
+```
+
+**To test the build locally:**
+```bash
+npm run build
+npm run serve
+```
+
+The application will be available at `http://localhost:3000` and should work exactly like the GitHub Pages version.
+
 ## 🚀 Quick Start
 
 ### Prerequisites
