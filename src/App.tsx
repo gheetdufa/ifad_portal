@@ -61,7 +61,7 @@ function App() {
 
   return (
     <AuthContext.Provider value={auth}>
-      <Router basename={import.meta.env.MODE === 'production' ? '/ifad_portal' : ''}>
+      <Router basename={import.meta.env.DEV ? '' : '/ifad_portal'}>
         <div className="min-h-screen flex flex-col bg-white">
           <Header />
           <main className="flex-1">
