@@ -8,7 +8,7 @@
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "build:gh-pages": "vite build --base=/",
+    "build:gh-pages": "vite build --mode=production",
     "predeploy": "npm run build:gh-pages",
     "deploy": "gh-pages -d docs",
     "serve": "vite preview --port 3000"

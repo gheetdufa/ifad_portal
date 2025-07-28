@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { ErrorBoundary } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useSearchParams } from 'react-router-dom';
 import { AuthContext, useAuthProvider } from './hooks/useAuth';
 import Header from './components/layout/Header';
@@ -61,7 +61,7 @@ function App() {
 
   return (
     <AuthContext.Provider value={auth}>
-      <Router>
+      <Router basename={import.meta.env.MODE === 'production' ? '/ifad_portal' : ''}>
         <div className="min-h-screen flex flex-col bg-white">
           <Header />
           <main className="flex-1">
