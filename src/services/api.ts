@@ -48,6 +48,17 @@ export interface RecentActivity {
   entityId?: string;
 }
 
+export interface SemesterRegistration {
+  semester: string;
+  maxStudents: number;
+  availableDays: string[];
+  experienceType: 'virtual' | 'in-person' | 'both';
+  additionalInfo: string;
+  status: 'pending' | 'approved' | 'rejected';
+  registeredAt: string;
+  updatedAt: string;
+}
+
 class ApiService {
   private baseUrl = import.meta.env.VITE_API_URL || '';
   
@@ -298,6 +309,110 @@ class ApiService {
         success: false,
         data: null,
         message: 'Failed to create match'
+      };
+    }
+  }
+
+  // Semester Registration endpoints
+  async registerForSemester(registrationData: {
+    semester: string;
+    maxStudents: number;
+    availableDays: string[];
+    experienceType: 'virtual' | 'in-person' | 'both';
+    additionalInfo: string;
+  }): Promise<ApiResponse<SemesterRegistration>> {
+    try {
+      const response = await fetch(`${this.baseUrl}/users/semester-registration`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
+        body: JSON.stringify(registrationData),
+      });
+
+      const result = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(result.message || 'Failed to register for semester');
+      }
+
+      return {
+        success: true,
+        data: result.data,
+      };
+    } catch (error) {
+      console.error('Error registering for semester:', error);
+      return {
+        success: false,
+        data: {} as SemesterRegistration,
+        message: error instanceof Error ? error.message : 'Failed to register for semester',
+      };
+    }
+  }
+
+  async getSemesterRegistration(semester: string): Promise<ApiResponse<{registered: boolean, registration: SemesterRegistration | null}>> {
+    try {
+      const response = await fetch(`${this.baseUrl}/users/semester-registration?semester=${encodeURIComponent(semester)}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
+      });
+
+      const result = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(result.message || 'Failed to get semester registration');
+      }
+
+      return {
+        success: true,
+        data: result.data,
+      };
+    } catch (error) {
+      console.error('Error getting semester registration:', error);
+      return {
+        success: false,
+        data: { registered: false, registration: null },
+        message: error instanceof Error ? error.message : 'Failed to get semester registration',
+      };
+    }
+  }
+
+  async updateSemesterRegistration(registrationData: {
+    semester: string;
+    maxStudents?: number;
+    availableDays?: string[];
+    experienceType?: 'virtual' | 'in-person' | 'both';
+    additionalInfo?: string;
+  }): Promise<ApiResponse<SemesterRegistration>> {
+    try {
+      const response = await fetch(`${this.baseUrl}/users/semester-registration`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
+        body: JSON.stringify(registrationData),
+      });
+
+      const result = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(result.message || 'Failed to update semester registration');
+      }
+
+      return {
+        success: true,
+        data: result.data,
+      };
+    } catch (error) {
+      console.error('Error updating semester registration:', error);
+      return {
+        success: false,
+        data: {} as SemesterRegistration,
+        message: error instanceof Error ? error.message : 'Failed to update semester registration',
       };
     }
   }

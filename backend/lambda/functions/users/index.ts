@@ -33,6 +33,15 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
       case path.includes('/users/hosts') && method === 'GET':
         return await handleGetHosts(currentUser, queryStringParameters);
       
+      case path.includes('/users/semester-registration') && method === 'POST':
+        return await handleSemesterRegistration(currentUser, body);
+      
+      case path.includes('/users/semester-registration') && method === 'GET':
+        return await handleGetSemesterRegistration(currentUser, queryStringParameters);
+      
+      case path.includes('/users/semester-registration') && method === 'PUT':
+        return await handleUpdateSemesterRegistration(currentUser, body);
+      
       default:
         return response.error('Not Found', 404);
     }
@@ -248,5 +257,134 @@ async function handleGetHosts(currentUser: any, queryParams: any): Promise<APIGa
   } catch (error) {
     console.error('Get hosts error:', error);
     return response.error('Failed to retrieve hosts', 500);
+  }
+}
+
+async function handleSemesterRegistration(currentUser: any, body: any): Promise<APIGatewayProxyResult> {
+  try {
+    const { semester, maxStudents, availableDays, experienceType, additionalInfo } = body;
+
+    // Validate required fields
+    if (!semester || !maxStudents) {
+      return response.error('Semester and max students are required', 400);
+    }
+
+    // Only hosts can register for semesters
+    if (currentUser.role !== 'host') {
+      return response.error('Only hosts can register for semesters', 403);
+    }
+
+    // Check if already registered for this semester
+    const existingRegistration = await db.get({
+      TableName: TABLE_NAME,
+      Key: {
+        PK: `USER#${currentUser.userId}`,
+        SK: `SEMESTER#${semester}`,
+      },
+    });
+
+    if (existingRegistration) {
+      return response.error('Already registered for this semester', 409);
+    }
+
+    // Create semester registration record
+    const registrationData = {
+      PK: `USER#${currentUser.userId}`,
+      SK: `SEMESTER#${semester}`,
+      GSI1PK: `SEMESTER#${semester}`,
+      GSI1SK: `HOST#${currentUser.userId}`,
+      GSI2PK: `SEMESTER_HOST#${semester}`,
+      GSI2SK: `USER#${currentUser.userId}`,
+      userId: currentUser.userId,
+      semester,
+      maxStudents: parseInt(maxStudents),
+      availableDays: availableDays || [],
+      experienceType: experienceType || 'both',
+      additionalInfo: additionalInfo || '',
+      status: 'pending', // pending, approved, rejected
+      registeredAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    await db.put({
+      TableName: TABLE_NAME,
+      Item: registrationData,
+    });
+
+    return response.success(registrationData);
+  } catch (error) {
+    console.error('Semester registration error:', error);
+    return response.error('Failed to register for semester', 500);
+  }
+}
+
+async function handleGetSemesterRegistration(currentUser: any, queryParams: any): Promise<APIGatewayProxyResult> {
+  try {
+    const { semester } = queryParams;
+
+    if (!semester) {
+      return response.error('Semester parameter is required', 400);
+    }
+
+    // Get registration for specific semester
+    const registration = await db.get({
+      TableName: TABLE_NAME,
+      Key: {
+        PK: `USER#${currentUser.userId}`,
+        SK: `SEMESTER#${semester}`,
+      },
+    });
+
+    if (!registration) {
+      return response.success({ registered: false, registration: null });
+    }
+
+    return response.success({ registered: true, registration });
+  } catch (error) {
+    console.error('Get semester registration error:', error);
+    return response.error('Failed to retrieve semester registration', 500);
+  }
+}
+
+async function handleUpdateSemesterRegistration(currentUser: any, body: any): Promise<APIGatewayProxyResult> {
+  try {
+    const { semester, maxStudents, availableDays, experienceType, additionalInfo } = body;
+
+    if (!semester) {
+      return response.error('Semester is required', 400);
+    }
+
+    // Get existing registration
+    const existingRegistration = await db.get({
+      TableName: TABLE_NAME,
+      Key: {
+        PK: `USER#${currentUser.userId}`,
+        SK: `SEMESTER#${semester}`,
+      },
+    });
+
+    if (!existingRegistration) {
+      return response.error('Registration not found for this semester', 404);
+    }
+
+    // Update registration
+    const updatedRegistration = {
+      ...existingRegistration,
+      maxStudents: maxStudents ? parseInt(maxStudents) : existingRegistration.maxStudents,
+      availableDays: availableDays !== undefined ? availableDays : existingRegistration.availableDays,
+      experienceType: experienceType || existingRegistration.experienceType,
+      additionalInfo: additionalInfo !== undefined ? additionalInfo : existingRegistration.additionalInfo,
+      updatedAt: new Date().toISOString(),
+    };
+
+    await db.put({
+      TableName: TABLE_NAME,
+      Item: updatedRegistration,
+    });
+
+    return response.success(updatedRegistration);
+  } catch (error) {
+    console.error('Update semester registration error:', error);
+    return response.error('Failed to update semester registration', 500);
   }
 }

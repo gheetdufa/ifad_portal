@@ -68,7 +68,7 @@ const HomePage: React.FC = () => {
       { phase: 'Student Orientation', period: 'Early/Mid-Oct', description: 'Students complete a mandatory orientation on workplace etiquette, program logistics, and more' },
       { phase: 'Student Applications', period: 'Mid/Late Oct', description: 'Students apply and rank order their top hosts of interest' },
       { phase: 'Matching Process', period: 'Late Oct/Early Nov', description: 'University Career Center staff match students with hosts & notify both parties' },
-      { phase: 'IFAD Experience', period: 'Nov-Jan', description: 'Intern for a Day experience takes place! Students and hosts determine the day that works best with their schedules for the shadowing or virtual informational interviewing experience.' }
+      { phase: 'IFAD Experience', period: 'Early Nov-Late Jan', description: 'Intern for a Day experience takes place! Students and hosts determine the day that works best with their schedules for the shadowing or virtual informational interviewing experience.' }
     ],
     spring: [
       { phase: 'Host Registration', period: 'Dec/Jan-Feb', description: 'Host registration is open' },
@@ -90,8 +90,8 @@ const HomePage: React.FC = () => {
     host: [
       { step: 'STEP 1', phase: 'Complete Host Registration', date: 'by Friday, September 29, 2025', description: '' },
       { step: 'STEP 2', phase: 'Host Vetting and Confirmation', date: 'October 1-6, 2025', description: '' },
-      { step: 'STEP 3', phase: 'Receive Student Match from University Career Center', date: 'late Oct - early Nov', description: '' },
-      { step: 'STEP 4', phase: 'Host Job Shadowing or Informational Interview', date: 'by Jan 2026', description: 'with Your Student' }
+      { step: 'STEP 3', phase: 'Receive Student Match(es) from University Career Center', date: 'late Oct - early Nov', description: '' },
+      { step: 'STEP 4', phase: 'Host Job Shadowing or Informational Interview', date: 'by Jan 2026', description: 'with Your Student(s)' }
     ]
   };
 
@@ -155,7 +155,7 @@ const HomePage: React.FC = () => {
               {/* Content Section */}
               <div>
                 <h2 className="text-3xl md:text-4xl font-bold mb-6 text-white">
-                  What is IFAD?
+                  What is Intern for a Day (IFAD)?
                 </h2>
                 
                 <div className="bg-gradient-to-br from-white/15 via-white/10 to-white/5 backdrop-blur-lg rounded-3xl p-6 md:p-8 border border-white/30 shadow-2xl relative overflow-hidden">
@@ -165,12 +165,15 @@ const HomePage: React.FC = () => {
                   
                   <div className="relative z-10">
                     <p className="text-lg md:text-xl leading-relaxed text-white font-light mb-6 text-left">
-                      The University Career Center's popular <span className="font-semibold text-umd-gold">Intern for a Day program</span> connects undergraduate UMD students with professionals (including alumni, parents/family members, and other off-campus partners) for <span className="font-semibold text-yellow-200">in-person job shadowing</span> or <span className="font-semibold text-yellow-200">virtual informational interviewing experiences</span> to explore potential career fields of interest.
+                      The University Career Center's popular <span className="font-semibold text-umd-gold">Intern for a Day (IFAD) program</span> connects undergraduate UMD students with professionals (including alumni, parents/family members, and other off-campus partners) for <span className="font-semibold text-yellow-200">in-person job shadowing</span> or <span className="font-semibold text-yellow-200">virtual informational interviewing experiences</span> to explore potential career fields of interest.
                     </p>
                     
                     <div className="bg-black/20 rounded-2xl p-4 border-l-4 border-umd-gold mb-6">
                       <p className="text-base text-white leading-relaxed">
                         After participating in a <span className="font-semibold text-umd-gold">mandatory orientation</span> and completing an application, University Career Center staff match you with a professional of interest for a half- or full-day job shadowing experience or a virtual informational interview.
+                      </p>
+                      <p className="text-sm text-yellow-200 leading-relaxed mt-3 italic">
+                        <strong>Please note:</strong> Due to the high demand and limited host availability, we cannot guarantee that all students who apply will be matched in the program.
                       </p>
                     </div>
                     
@@ -194,8 +197,30 @@ const HomePage: React.FC = () => {
 
 
       {/* How To Participate Section - White Background */}
-      <section className="py-20 bg-white" role="main" aria-label="Participation Information">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <section className="py-20 bg-white relative overflow-hidden" role="main" aria-label="Participation Information">
+        {/* Subtle Background Images */}
+        <div className="absolute inset-0 opacity-5 pointer-events-none">
+          <img 
+            src={Collage2} 
+            alt="" 
+            className="absolute top-10 right-10 w-48 h-48 object-cover rounded-full blur-sm"
+            aria-hidden="true"
+          />
+          <img 
+            src={UMDInterns1} 
+            alt="" 
+            className="absolute bottom-10 left-10 w-40 h-40 object-cover rounded-full blur-sm"
+            aria-hidden="true"
+          />
+          <img 
+            src={Collage3} 
+            alt="" 
+            className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-32 h-32 object-cover rounded-full blur-sm opacity-30"
+            aria-hidden="true"
+          />
+        </div>
+        
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
           
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
             {/* For Professionals */}
@@ -225,19 +250,19 @@ const HomePage: React.FC = () => {
                       <div className="w-6 h-6 bg-white rounded-full flex items-center justify-center flex-shrink-0 mt-1">
                         <span className="text-umd-red font-bold text-sm">3</span>
                       </div>
-                      <p className="text-sm leading-relaxed">Receive Student Match from University Career Center</p>
+                      <p className="text-sm leading-relaxed">Receive Student Match(es) from University Career Center</p>
                     </div>
                     <div className="flex items-start space-x-3">
                       <div className="w-6 h-6 bg-white rounded-full flex items-center justify-center flex-shrink-0 mt-1">
                         <span className="text-umd-red font-bold text-sm">4</span>
                       </div>
-                      <p className="text-sm leading-relaxed">Host Job Shadowing or Informational Interview with Your Student</p>
+                      <p className="text-sm leading-relaxed">Host Job Shadowing or Informational Interview with Your Student(s)</p>
                     </div>
                   </div>
                   <div className="mt-6">
-                    <Link to="/register/host" className="bg-white text-umd-red px-6 py-2 rounded-full font-bold hover:bg-gray-100 transition-colors focus:outline-none focus:ring-4 focus:ring-white/50" aria-label="Register as a professional host">
+                    <a href="/register/host" target="_blank" rel="noopener noreferrer" className="bg-white text-umd-red px-6 py-2 rounded-full font-bold hover:bg-gray-100 transition-colors focus:outline-none focus:ring-4 focus:ring-white/50" aria-label="Register as a professional host">
                       Register as Host
-                    </Link>
+                    </a>
                   </div>
                 </div>
               </div>
@@ -280,9 +305,9 @@ const HomePage: React.FC = () => {
                     </div>
                   </div>
                   <div className="mt-6">
-                    <Link to="/register/student" className="bg-white text-umd-red px-6 py-2 rounded-full font-bold hover:bg-gray-100 transition-colors focus:outline-none focus:ring-4 focus:ring-white/50" aria-label="Register as a student participant">
+                    <a href="/register/student" target="_blank" rel="noopener noreferrer" className="bg-white text-umd-red px-6 py-2 rounded-full font-bold hover:bg-gray-100 transition-colors focus:outline-none focus:ring-4 focus:ring-white/50" aria-label="Register as a student participant">
                       Register as Student
-                    </Link>
+                    </a>
                   </div>
                 </div>
               </div>
@@ -629,10 +654,10 @@ const HomePage: React.FC = () => {
                 variant="secondary"
                 className="relative px-16 py-8 text-2xl font-black bg-gradient-to-r from-umd-gold to-yellow-400 text-black hover:from-yellow-400 hover:to-umd-gold transform hover:scale-110 transition-all duration-300 rounded-2xl shadow-2xl"
               >
-                <Link to="/public-hosts" className="flex items-center space-x-3">
+                <a href="/public-hosts" target="_blank" rel="noopener noreferrer" className="flex items-center space-x-3">
                   <span>🔍</span>
                   <span>Browse Host List</span>
-                </Link>
+                </a>
               </Button>
             </div>
             
@@ -645,10 +670,10 @@ const HomePage: React.FC = () => {
                 variant="secondary"
                 className="relative px-16 py-8 text-2xl font-black bg-gradient-to-r from-umd-red to-red-400 text-white hover:from-red-400 hover:to-umd-red transform hover:scale-110 transition-all duration-300 rounded-2xl shadow-2xl"
               >
-                <Link to="/register/student" className="flex items-center space-x-3">
+                <a href="/register/student" target="_blank" rel="noopener noreferrer" className="flex items-center space-x-3">
                   <span>🚀</span>
                   <span>Create a Profile</span>
-                </Link>
+                </a>
               </Button>
             </div>
           </div>
