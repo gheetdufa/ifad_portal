@@ -11,6 +11,7 @@ import HostList from './pages/student/HostList';
 import HostDashboard from './pages/host/HostDashboard';
 import HostRegistration from './pages/host/HostRegistration';
 import HostSemesterRegistration from './pages/host/HostSemesterRegistration';
+import HostSignup from './pages/host/HostSignup';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import HostManagement from './pages/admin/HostManagement';
 import StudentApplications from './pages/admin/StudentApplications';
@@ -104,11 +105,12 @@ function App() {
               {/* Registration Routes */}
               <Route path="/register" element={<RegistrationRouter />} />
               <Route path="/register/student" element={<StudentRegistration />} />
-               {/* Host profile requires login now */}
+              {/* Host profile requires login now */}
                <Route 
                  path="/register/host" 
                  element={<Navigate to="/login?type=host" replace />} 
                />
+              <Route path="/signup/host" element={<HostSignup />} />
               <Route path="/register/host/semester" element={<HostSemesterRegistration />} />
               
               {/* Student Routes */}

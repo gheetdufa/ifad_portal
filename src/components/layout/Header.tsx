@@ -107,7 +107,7 @@ const Header: React.FC = () => {
                   size="sm"
                   className="text-umd-gray-700 hover:text-umd-red focus:outline-none focus:ring-4 focus:ring-umd-red/50 md:text-base"
                 >
-                  <Link to="/login?type=host" className="block w-full" aria-label="Create a host account">Host</Link>
+                  <Link to="/signup/host" className="block w-full" aria-label="Create a host account">Host</Link>
                 </Button>
               </div>
             )}

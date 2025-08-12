@@ -396,7 +396,7 @@ const HomePage: React.FC = () => {
                 {/* Buttons */}
                 <div className="flex flex-col gap-3 sm:gap-2">
                   <a 
-                    href="/login?type=host" 
+                    href="/signup/host" 
                     className="bg-gradient-to-r from-orange-500 to-red-500 text-white px-6 py-4 rounded-lg font-bold hover:from-orange-600 hover:to-red-600 transition-all duration-300 text-center text-base min-h-[48px] touch-manipulation"
                   >
                     Create IFAD Host Account
