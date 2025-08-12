@@ -46,12 +46,19 @@ const HostSignup: React.FC = () => {
     }
     setIsSubmitting(true);
     try {
+      // Backend compatibility: supply minimal required host fields
       await register({
         email: formData.email,
         password: formData.password,
         firstName: formData.firstName,
         lastName: formData.lastName,
         role: 'host',
+        // Minimal placeholders to satisfy current backend host validation
+        jobTitle: 'Prospective Host',
+        organization: 'TBD',
+        workLocation: 'virtual',
+        workPhone: '555-555-0100',
+        careerFields: ['Other'],
       });
       navigate('/login?type=host', { replace: true });
     } catch (err: any) {
