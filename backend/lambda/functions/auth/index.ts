@@ -1,5 +1,5 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
-import { CognitoIdentityProviderClient, InitiateAuthCommand, AdminAddUserToGroupCommand, AdminCreateUserCommand, AdminSetUserPasswordCommand } from '@aws-sdk/client-cognito-identity-provider';
+import { CognitoIdentityProviderClient, InitiateAuthCommand, AdminAddUserToGroupCommand, AdminCreateUserCommand, AdminSetUserPasswordCommand, ForgotPasswordCommand, ConfirmForgotPasswordCommand } from '@aws-sdk/client-cognito-identity-provider';
 import { v4 as uuidv4 } from 'uuid';
 
 // Use shared utilities from Lambda layer
@@ -39,6 +39,12 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
       
       case path.includes('/auth/confirm') && method === 'POST':
         return await handleConfirmSignUp(body);
+      
+      case path.includes('/auth/forgot') && method === 'POST':
+        return await handleForgotPassword(body);
+      
+      case path.includes('/auth/reset') && method === 'POST':
+        return await handleConfirmForgotPassword(body);
       
       default:
         return response.error('Not Found', 404);
@@ -384,5 +390,44 @@ async function handleConfirmSignUp(body: any): Promise<APIGatewayProxyResult> {
   } catch (error: any) {
     console.error('Confirm signup error:', error);
     return response.error('Confirmation failed', 400, error.message);
+  }
+}
+
+async function handleForgotPassword(body: any): Promise<APIGatewayProxyResult> {
+  try {
+    const { email } = body;
+    validate.required(email, 'Email');
+    validate.email(email);
+    const cmd = new ForgotPasswordCommand({
+      ClientId: USER_POOL_CLIENT_ID,
+      Username: email,
+    });
+    await cognito.send(cmd);
+    return response.success({ message: 'Password reset code sent to your email' });
+  } catch (error: any) {
+    console.error('Forgot password error:', error);
+    return response.error('Failed to initiate password reset', 400, error.message);
+  }
+}
+
+async function handleConfirmForgotPassword(body: any): Promise<APIGatewayProxyResult> {
+  try {
+    const { email, code, newPassword } = body;
+    validate.required(email, 'Email');
+    validate.email(email);
+    validate.required(code, 'Verification code');
+    validate.required(newPassword, 'New password');
+    validate.password(newPassword);
+    const cmd = new ConfirmForgotPasswordCommand({
+      ClientId: USER_POOL_CLIENT_ID,
+      Username: email,
+      ConfirmationCode: code,
+      Password: newPassword,
+    });
+    await cognito.send(cmd);
+    return response.success({ message: 'Password has been reset successfully' });
+  } catch (error: any) {
+    console.error('Confirm forgot password error:', error);
+    return response.error('Failed to reset password', 400, error.message);
   }
 }

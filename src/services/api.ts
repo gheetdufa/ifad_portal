@@ -323,6 +323,38 @@ class ApiService {
     }
   }
 
+  async forgotPassword(email: string): Promise<ApiResponse<any>> {
+    try {
+      if (!this.baseUrl) return { success: true, data: null, message: 'Reset code sent (dev mode)' };
+      const res = await fetch(`${this.baseUrl}/auth/forgot`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.message || 'Failed to start password reset');
+      return { success: true, data: json, message: 'Reset code sent' };
+    } catch (e) {
+      return { success: false, data: null, message: e instanceof Error ? e.message : 'Failed to start password reset' };
+    }
+  }
+
+  async resetPassword(email: string, code: string, newPassword: string): Promise<ApiResponse<any>> {
+    try {
+      if (!this.baseUrl) return { success: true, data: null, message: 'Password reset (dev mode)' };
+      const res = await fetch(`${this.baseUrl}/auth/reset`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, code, newPassword }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.message || 'Failed to reset password');
+      return { success: true, data: json, message: 'Password has been reset' };
+    } catch (e) {
+      return { success: false, data: null, message: e instanceof Error ? e.message : 'Failed to reset password' };
+    }
+  }
+
   async getPublicHosts(): Promise<ApiResponse<{ hosts: PublicHost[] }>> {
     try {
       if (!this.baseUrl) throw new Error('API URL not configured.');

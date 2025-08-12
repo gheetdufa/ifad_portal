@@ -12,6 +12,8 @@ import HostDashboard from './pages/host/HostDashboard';
 import HostRegistration from './pages/host/HostRegistration';
 import HostSemesterRegistration from './pages/host/HostSemesterRegistration';
 import HostSignup from './pages/host/HostSignup';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import HostManagement from './pages/admin/HostManagement';
 import StudentApplications from './pages/admin/StudentApplications';
@@ -111,6 +113,8 @@ function App() {
                  element={<Navigate to="/login?type=host" replace />} 
                />
               <Route path="/signup/host" element={<HostSignup />} />
+              <Route path="/forgot-password" element={<ForgotPassword />} />
+              <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/register/host/semester" element={<HostSemesterRegistration />} />
               
               {/* Student Routes */}

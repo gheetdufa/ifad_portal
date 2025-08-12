@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Users, Briefcase, Shield, UserPlus } from 'lucide-react';
+import apiService from '../services/api';
 import { useAuth } from '../hooks/useAuth';
 import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
@@ -18,6 +19,10 @@ const LoginPage: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [showReset, setShowReset] = useState(false);
+  const [resetEmail, setResetEmail] = useState('');
+  const [resetCode, setResetCode] = useState('');
+  const [resetNewPassword, setResetNewPassword] = useState('');
 
   const [userType, setUserType] = useState(searchParams.get('type') || 'student');
 
@@ -57,6 +62,33 @@ const LoginPage: React.FC = () => {
       ...prev,
       [e.target.name]: e.target.value,
     }));
+  };
+
+  const startReset = async () => {
+    try {
+      setError('');
+      const email = resetEmail || formData.email;
+      if (!email) { setError('Enter your email to reset password'); return; }
+      const res = await apiService.forgotPassword(email);
+      if (!res.success) throw new Error(res.message);
+      setShowReset(true);
+      setResetEmail(email);
+    } catch (e:any) {
+      setError(e.message || 'Failed to send reset code');
+    }
+  };
+
+  const confirmReset = async () => {
+    try {
+      setError('');
+      if (!resetEmail || !resetCode || !resetNewPassword) { setError('Fill all reset fields'); return; }
+      const res = await apiService.resetPassword(resetEmail, resetCode, resetNewPassword);
+      if (!res.success) throw new Error(res.message);
+      setShowReset(false);
+      setResetCode(''); setResetNewPassword('');
+    } catch (e:any) {
+      setError(e.message || 'Failed to reset password');
+    }
   };
 
   return (
@@ -174,6 +206,11 @@ const LoginPage: React.FC = () => {
             >
               Sign In
             </Button>
+
+            {/* Forgot password */}
+            <div className="text-right mt-2">
+              <Link to="/forgot-password" className="text-sm text-umd-red hover:underline">Forgot password?</Link>
+            </div>
           </form>
 
             {/* Registration Section */}

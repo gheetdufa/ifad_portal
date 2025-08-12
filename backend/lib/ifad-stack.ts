@@ -341,10 +341,14 @@ export class IfadStack extends cdk.Stack {
     const loginResource = authResource.addResource('login');
     const registerResource = authResource.addResource('register');
     const confirmResource = authResource.addResource('confirm');
+    const forgotResource = authResource.addResource('forgot');
+    const resetResource = authResource.addResource('reset');
     
     loginResource.addMethod('POST', new apigateway.LambdaIntegration(this.lambdaFunctions.auth));
     registerResource.addMethod('POST', new apigateway.LambdaIntegration(this.lambdaFunctions.auth));
     confirmResource.addMethod('POST', new apigateway.LambdaIntegration(this.lambdaFunctions.auth));
+    forgotResource.addMethod('POST', new apigateway.LambdaIntegration(this.lambdaFunctions.auth));
+    resetResource.addMethod('POST', new apigateway.LambdaIntegration(this.lambdaFunctions.auth));
 
     // Public routes
     const publicResource = this.api.root.addResource('public');
