@@ -60,7 +60,14 @@ export interface SemesterRegistration {
 }
 
 class ApiService {
-  private baseUrl = 'https://rystvdeu40.execute-api.us-east-1.amazonaws.com/prod';
+  private baseUrl = (() => {
+    const envUrl = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
+    if (envUrl) {
+      return envUrl;
+    }
+    // Fallback for development
+    return '';
+  })();
   
   // In-memory storage for demo purposes - replace with actual database calls
   private hosts: any[] = [];
