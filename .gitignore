@@ -23,7 +23,7 @@ dist-ssr
 *.sln
 *.sw?
 .env
-.claude/settings.local.json
+.claude/
 
 # Large files
 backend/awscliv2.zip
