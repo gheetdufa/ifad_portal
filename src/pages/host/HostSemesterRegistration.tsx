@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { CheckCircle, Calendar, Clock, Users, Mail } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
+import { apiService } from '../../services/api';
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
@@ -18,8 +19,15 @@ const HostSemesterRegistration: React.FC = () => {
     maxStudents: 1,
     availableDays: [] as string[],
     winterSessionAvailable: false,
+    holidayBreakAvailable: false,
     interestedInRecruitment: false,
-    additionalInfo: ''
+    additionalInfo: '',
+    // In-person specifics
+    dcMetroAccessible: undefined as boolean | undefined,
+    dmvAreaConfirm: false,
+    // Requirements
+    requiresBackgroundCheck: undefined as boolean | undefined,
+    requiresCitizenship: undefined as boolean | undefined,
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -59,24 +67,58 @@ const HostSemesterRegistration: React.FC = () => {
 
     if (!formData.opportunityType) {
       setError('Please select an opportunity type');
+      const el = document.getElementById('field-opportunityType');
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
       return;
     }
 
-    if (formData.opportunityType === 'in-person' && !formData.understandPhysicalOffice) {
-      setError('Please confirm you understand the physical office requirement');
-      return;
+    if (formData.opportunityType === 'in-person') {
+      if (!formData.understandPhysicalOffice) {
+        setError('Please confirm you understand the physical office requirement');
+        const el = document.getElementById('field-understandPhysicalOffice');
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return;
+      }
+      if (formData.dcMetroAccessible === undefined) {
+        setError('Please indicate DC metro accessibility');
+        const el = document.getElementById('field-dcMetroAccessible');
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return;
+      }
+      if (!formData.dmvAreaConfirm) {
+        setError('Please confirm you are in the DMV area for in-person shadowing');
+        const el = document.getElementById('field-dmvAreaConfirm');
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return;
+      }
     }
 
     if (formData.availableDays.length === 0) {
       setError('Please select at least one available day');
+       const el = document.getElementById('field-availableDays');
+       if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
       return;
     }
 
     setIsSubmitting(true);
 
     try {
-      // TODO: API call to register for semester
-      await new Promise(resolve => setTimeout(resolve, 2000)); // Mock delay
+      // Save via API (dev mode supports mock persistence)
+      const semester = 'Fall 2025';
+      const res = await apiService.registerForSemester({
+        semester,
+        maxStudents: formData.maxStudents,
+        availableDays: formData.availableDays,
+        experienceType: (formData.opportunityType as 'in-person' | 'virtual' | 'both') || 'in-person',
+        additionalInfo: formData.additionalInfo,
+        requiresBackgroundCheck: formData.requiresBackgroundCheck,
+        requiresCitizenship: formData.requiresCitizenship,
+        isDcMetroAccessible: formData.dcMetroAccessible,
+        dmvAreaConfirm: formData.dmvAreaConfirm,
+        holidayBreakAvailable: formData.holidayBreakAvailable,
+        understandPhysicalOffice: formData.understandPhysicalOffice,
+      });
+      if (!res.success) throw new Error(res.message || 'Failed to register');
       setIsSubmitted(true);
     } catch (err: any) {
       setError('Registration failed. Please try again.');
@@ -93,7 +135,7 @@ const HostSemesterRegistration: React.FC = () => {
             <div className="w-24 h-24 bg-gradient-to-br from-green-500 to-emerald-600 rounded-full flex items-center justify-center mx-auto mb-8">
               <CheckCircle className="w-12 h-12 text-white" />
             </div>
-            <h1 className="text-4xl md:text-5xl font-bold text-umd-black mb-6">Thank you so much for registering to be a host for an internship for a day in Fall 2025!</h1>
+            <h1 className="text-3xl md:text-4xl font-bold text-umd-black mb-6">Thank you for registering to be an Intern for a Day host for Fall 2025!</h1>
             
             <div className="max-w-3xl mx-auto text-left space-y-6 mb-10">
               <p className="text-lg text-umd-gray-700 leading-relaxed">
@@ -282,8 +324,9 @@ const HostSemesterRegistration: React.FC = () => {
               <h3 className="text-xl font-semibold text-umd-black mb-4">
                 For the FALL 2025 semester, which option would you like to offer UMD undergraduate students?
               </h3>
+              <p className="text-sm text-gray-600 mb-3">If you plan to offer both, you can select "Both" below. You may also return later to adjust your selection.</p>
               <div className="space-y-3">
-                <label className="flex items-start space-x-3 p-4 bg-gray-50 rounded-lg hover:bg-blue-50 cursor-pointer">
+                <label id="field-opportunityType" className="flex items-start space-x-3 p-4 bg-gray-50 rounded-lg hover:bg-blue-50 cursor-pointer">
                   <input
                     type="radio"
                     name="opportunityType"
@@ -305,8 +348,53 @@ const HostSemesterRegistration: React.FC = () => {
                   />
                   <span>Virtual informational interviews</span>
                 </label>
+                <label className="flex items-start space-x-3 p-4 bg-gray-50 rounded-lg hover:bg-blue-50 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="opportunityType"
+                    value="both"
+                    checked={formData.opportunityType === 'both'}
+                    onChange={(e) => handleInputChange('opportunityType', e.target.value)}
+                    className="w-4 h-4 text-blue-600 mt-1"
+                  />
+                  <span>Both in-person job shadowing and virtual informational interviews</span>
+                </label>
               </div>
             </section>
+
+            {/* In-person specifics */}
+            {(formData.opportunityType === 'in-person' || formData.opportunityType === 'both') && (
+              <section>
+                <div className="space-y-6">
+                  <div>
+                    <p className="text-gray-700 font-medium mb-3">Is your work location DC metro accessible from College Park?</p>
+                    <div id="field-dcMetroAccessible" className="flex space-x-6">
+                      <label className="flex items-center space-x-2">
+                        <input type="radio" name="dcMetroAccessible" checked={formData.dcMetroAccessible === true} onChange={() => handleInputChange('dcMetroAccessible', true)} className="w-4 h-4 text-blue-600" />
+                        <span>Yes</span>
+                      </label>
+                      <label className="flex items-center space-x-2">
+                        <input type="radio" name="dcMetroAccessible" checked={formData.dcMetroAccessible === false} onChange={() => handleInputChange('dcMetroAccessible', false)} className="w-4 h-4 text-blue-600" />
+                        <span>No</span>
+                      </label>
+                      <label className="flex items-center space-x-2">
+                        <input type="radio" name="dcMetroAccessible" checked={formData.dcMetroAccessible === undefined} onChange={() => handleInputChange('dcMetroAccessible', undefined)} className="w-4 h-4 text-blue-600" />
+                        <span>Unsure</span>
+                      </label>
+                    </div>
+                    <p className="text-sm text-gray-600 mt-2">Note: In-person shadowing is limited to the DMV area. Please ensure your location is within a reasonable commute (suggested within ~25 miles of campus).</p>
+                  </div>
+                  <label className="flex items-start space-x-3 p-4 bg-yellow-50 rounded-lg cursor-pointer">
+                    <input id="field-understandPhysicalOffice" type="checkbox" checked={formData.understandPhysicalOffice} onChange={(e) => handleInputChange('understandPhysicalOffice', e.target.checked)} className="w-5 h-5 text-blue-600 mt-1" />
+                    <span className="text-sm">I understand I must be reporting to a physical office/workplace and not teleworking on the day the student job shadows me.</span>
+                  </label>
+                  <label className="flex items-start space-x-3 p-4 bg-blue-50 rounded-lg cursor-pointer">
+                    <input id="field-dmvAreaConfirm" type="checkbox" checked={formData.dmvAreaConfirm} onChange={(e) => handleInputChange('dmvAreaConfirm', e.target.checked)} className="w-5 h-5 text-blue-600 mt-1" />
+                    <span className="text-sm">I confirm my in-person shadowing location is within the DC–Maryland–Virginia area.</span>
+                  </label>
+                </div>
+              </section>
+            )}
 
             {/* Student Capacity */}
             <section>
@@ -334,7 +422,7 @@ const HostSemesterRegistration: React.FC = () => {
                 What days of the week would work best with your schedule for a student to shadow you?
               </h3>
               <p className="text-sm text-gray-600 mb-3">Please select all that apply.</p>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <div id="field-availableDays" className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'].map((day) => (
                   <label key={day} className="flex items-center space-x-2 p-3 bg-gray-50 rounded-lg hover:bg-blue-50 cursor-pointer">
                     <input
@@ -349,8 +437,23 @@ const HostSemesterRegistration: React.FC = () => {
               </div>
             </section>
 
-            {/* Winter Session */}
+            {/* Holiday Break and Winter Session */}
             <section>
+              <h3 className="text-xl font-semibold text-umd-black mb-4">Availability Windows</h3>
+              <div className="space-y-6">
+                <div>
+                  <p className="text-base text-umd-gray-700 mb-2">Available during the November Holiday Break, November 26–November 30, 2025 (Wednesday–Sunday)?</p>
+                  <div className="flex space-x-6">
+                    <label className="flex items-center space-x-2">
+                      <input type="radio" name="holidayBreakAvailable" checked={formData.holidayBreakAvailable === true} onChange={() => handleInputChange('holidayBreakAvailable', true)} className="w-4 h-4 text-blue-600" />
+                      <span>Yes</span>
+                    </label>
+                    <label className="flex items-center space-x-2">
+                      <input type="radio" name="holidayBreakAvailable" checked={formData.holidayBreakAvailable === false} onChange={() => handleInputChange('holidayBreakAvailable', false)} className="w-4 h-4 text-blue-600" />
+                      <span>No</span>
+                    </label>
+                  </div>
+                </div>
               <h3 className="text-xl font-semibold text-umd-black mb-4">
                 UMD holds a Winter Session from January 5-23, 2026. Many local students like to conduct their 
                 shadowing experience during this time. Would a shadowing day some time in this range work with your schedule?
@@ -376,6 +479,7 @@ const HostSemesterRegistration: React.FC = () => {
                   />
                   <span>No</span>
                 </label>
+              </div>
               </div>
             </section>
 
@@ -408,8 +512,37 @@ const HostSemesterRegistration: React.FC = () => {
               </div>
             </section>
 
-            {/* Additional Information */}
+            {/* Requirements and Additional Information */}
             <section>
+              <h3 className="text-xl font-semibold text-umd-black mb-4">Requirements</h3>
+              <div className="space-y-4 mb-6">
+                <div>
+                  <p className="text-base text-umd-gray-700 mb-2">For this one-day experience, will the student(s) be required to complete and pay for a background check?</p>
+                  <div className="flex space-x-6">
+                    <label className="flex items-center space-x-2">
+                      <input type="radio" name="requiresBackgroundCheck" checked={formData.requiresBackgroundCheck === true} onChange={() => handleInputChange('requiresBackgroundCheck', true)} className="w-4 h-4 text-blue-600" />
+                      <span>Yes</span>
+                    </label>
+                    <label className="flex items-center space-x-2">
+                      <input type="radio" name="requiresBackgroundCheck" checked={formData.requiresBackgroundCheck === false} onChange={() => handleInputChange('requiresBackgroundCheck', false)} className="w-4 h-4 text-blue-600" />
+                      <span>No</span>
+                    </label>
+                  </div>
+                </div>
+                <div>
+                  <p className="text-base text-umd-gray-700 mb-2">Do you require that the student be a U.S. citizen? We’ll include this requirement in the host description list that students review.</p>
+                  <div className="flex space-x-6">
+                    <label className="flex items-center space-x-2">
+                      <input type="radio" name="requiresCitizenship" checked={formData.requiresCitizenship === true} onChange={() => handleInputChange('requiresCitizenship', true)} className="w-4 h-4 text-blue-600" />
+                      <span>Yes</span>
+                    </label>
+                    <label className="flex items-center space-x-2">
+                      <input type="radio" name="requiresCitizenship" checked={formData.requiresCitizenship === false} onChange={() => handleInputChange('requiresCitizenship', false)} className="w-4 h-4 text-blue-600" />
+                      <span>No</span>
+                    </label>
+                  </div>
+                </div>
+              </div>
               <h3 className="text-xl font-semibold text-umd-black mb-4">
                 Is there any more information you would like to share?
               </h3>

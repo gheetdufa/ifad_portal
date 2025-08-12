@@ -105,6 +105,7 @@ function App() {
               <Route path="/register" element={<RegistrationRouter />} />
               <Route path="/register/student" element={<StudentRegistration />} />
               <Route path="/register/host" element={<HostRegistration />} />
+              <Route path="/register/host/semester" element={<HostSemesterRegistration />} />
               
               {/* Student Routes */}
               <Route 

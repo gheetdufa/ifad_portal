@@ -253,6 +253,11 @@ const HostRegistration: React.FC = () => {
     
     if (Object.keys(errors).length > 0) {
       setError('Please correct the highlighted fields');
+      const firstErrorKey = Object.keys(requiredFields).find((k) => errors[k]);
+      if (firstErrorKey) {
+        const el = document.getElementById(`field-${firstErrorKey}`);
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
       return false;
     }
 
@@ -284,10 +289,7 @@ const HostRegistration: React.FC = () => {
         preferredPhone: formData.preferredPhone,
         // Map to backend-expected fields
         workPhone: formData.preferredPhone,
-        workLocation:
-          formData.opportunityType === 'in-person'
-            ? `${formData.companyAddress}${formData.cityState ? ', ' + formData.cityState : ''}${formData.zipCode ? ' ' + formData.zipCode : ''}`
-            : 'virtual',
+        workLocation: `${formData.companyAddress}${formData.cityState ? ', ' + formData.cityState : ''}${formData.zipCode ? ' ' + formData.zipCode : ''}`,
         previousHostExperience: formData.previousHostExperience,
         isUmdParent: formData.isUmdParent,
         isUmdAlumni: formData.isUmdAlumni,
@@ -299,13 +301,13 @@ const HostRegistration: React.FC = () => {
         zipCode: formData.zipCode,
         careerFields: formData.careerFields,
         careerFieldsOther: formData.careerFieldsOther || undefined,
-        opportunityType: formData.opportunityType,
-        isDcMetroAccessible: formData.isDcMetroAccessible,
-        workLocationAccessibilityUnsure: formData.workLocationAccessibilityUnsure,
-        isPhysicalOffice: formData.isPhysicalOffice,
+        // Semester-specific selections will be captured during semester registration
+        isDcMetroAccessible: undefined,
+        workLocationAccessibilityUnsure: undefined,
+        isPhysicalOffice: undefined,
         isFederalAgency: formData.isFederalAgency,
-        requiresCitizenship: formData.requiresCitizenship,
-        requiresBackgroundCheck: formData.requiresBackgroundCheck,
+        requiresCitizenship: undefined,
+        requiresBackgroundCheck: undefined,
         organizationDescription: formData.organizationDescription,
         experienceDescription: formData.experienceDescription,
         additionalInfo: formData.additionalInfo || undefined,
@@ -318,8 +320,8 @@ const HostRegistration: React.FC = () => {
         // Legacy fields for compatibility
         industry: formData.careerFields[0] || 'Other',
         bio: formData.organizationDescription,
-        experienceType: formData.opportunityType === 'in-person' ? 'shadowing' : 'interview',
-        location: formData.opportunityType,
+        experienceType: 'both',
+        location: 'both',
         verified: false,
       };
 
@@ -374,14 +376,22 @@ const HostRegistration: React.FC = () => {
             <div className="w-24 h-24 bg-gradient-to-br from-green-500 to-emerald-600 rounded-full flex items-center justify-center mx-auto mb-8">
               <CheckCircle className="w-12 h-12 text-white" />
             </div>
-            <h1 className="text-4xl md:text-5xl font-bold text-umd-black mb-6">Registration Submitted!</h1>
-            <p className="text-xl text-umd-gray-600 mb-10 leading-relaxed">
-              Thank you for registering to be a host for the IFAD program. 
-              We will review your application and contact you with next steps.
+            <h1 className="text-3xl md:text-4xl font-bold text-umd-black mb-4">Your IFAD Host Profile Has Been Submitted!</h1>
+            <p className="text-lg md:text-xl text-umd-gray-700 mb-6 leading-relaxed">
+              Thank you for your interest in serving as a host for IFAD. We will review your profile and contact you with next steps,
+              including registering for this semester's program.
             </p>
+            <div className="space-y-2 text-sm md:text-base text-umd-gray-700 max-w-2xl mx-auto mb-8">
+              <p><strong>Note:</strong> You will register for the program each semester you want to participate.</p>
+            </div>
+            <div className="flex items-center justify-center gap-3 flex-wrap">
             <Button variant="primary" className="bg-gradient-to-r from-umd-red to-red-600 hover:from-red-600 hover:to-red-700">
-              <Link to="/host">Go to Dashboard</Link>
+              <Link to="/login">Login to Register for Fall 2025</Link>
             </Button>
+              <Button variant="outline">
+                <Link to="/login">Go to Dashboard (login required)</Link>
+              </Button>
+            </div>
           </Card>
         </div>
       </div>
@@ -477,12 +487,13 @@ const HostRegistration: React.FC = () => {
                   </label>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <Input
+                  <Input
                         type="text"
                         placeholder="First Name"
                         value={formData.firstName}
                         onChange={(e) => handleInputChange('firstName', e.target.value)}
-                        className={validationErrors.firstName ? 'border-red-500 focus:border-red-500' : ''}
+                    id="field-firstName"
+                    className={validationErrors.firstName ? 'border-red-500 focus:border-red-500' : ''}
                         required
                       />
                       {validationErrors.firstName && (
@@ -490,12 +501,13 @@ const HostRegistration: React.FC = () => {
                       )}
                     </div>
                     <div>
-                      <Input
+                  <Input
                         type="text"
                         placeholder="Last Name"
                         value={formData.lastName}
                         onChange={(e) => handleInputChange('lastName', e.target.value)}
-                        className={validationErrors.lastName ? 'border-red-500 focus:border-red-500' : ''}
+                    id="field-lastName"
+                    className={validationErrors.lastName ? 'border-red-500 focus:border-red-500' : ''}
                         required
                       />
                       {validationErrors.lastName && (
@@ -515,6 +527,7 @@ const HostRegistration: React.FC = () => {
                     placeholder="your.email@company.com"
                     value={formData.workEmail}
                     onChange={(e) => handleInputChange('workEmail', e.target.value)}
+                    id="field-workEmail"
                     className={validationErrors.workEmail ? 'border-red-500 focus:border-red-500' : ''}
                     required
                   />
@@ -532,6 +545,7 @@ const HostRegistration: React.FC = () => {
                     placeholder="Enter a secure password"
                     value={formData.password}
                     onChange={(e) => handleInputChange('password', e.target.value)}
+                    id="field-password"
                     className={validationErrors.password ? 'border-red-500 focus:border-red-500' : ''}
                     required
                   />
@@ -552,6 +566,7 @@ const HostRegistration: React.FC = () => {
                     placeholder="Confirm your password"
                     value={formData.confirmPassword}
                     onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
+                    id="field-confirmPassword"
                     className={validationErrors.confirmPassword ? 'border-red-500 focus:border-red-500' : ''}
                     required
                   />
@@ -570,6 +585,7 @@ const HostRegistration: React.FC = () => {
                     placeholder="(XXX) XXX-XXXX"
                     value={formData.preferredPhone}
                     onChange={(e) => handleInputChange('preferredPhone', e.target.value)}
+                    id="field-preferredPhone"
                     className={validationErrors.preferredPhone ? 'border-red-500 focus:border-red-500' : ''}
                     required
                   />
@@ -580,14 +596,16 @@ const HostRegistration: React.FC = () => {
               </div>
             </section>
 
-            {/* About You */}
+            {/* About You (Internal only) */}
             <section>
               <h2 className="text-2xl font-bold text-umd-black mb-6">About You</h2>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Tell us about yourself *
                 </label>
+                <p className="text-sm text-gray-600 mb-2">This response is for our team only and will <strong>not</strong> be shown to students. Focus on a concise professional background (2–4 sentences).</p>
                 <textarea
+                  id="field-aboutYou"
                   placeholder="Please describe yourself, your background, interests, etc..."
                   value={formData.aboutYou}
                   onChange={(e) => handleInputChange('aboutYou', e.target.value)}
@@ -600,7 +618,7 @@ const HostRegistration: React.FC = () => {
                   }`}
                 />
                 {validationErrors.aboutYou && (
-                  <p className="text-red-500 text-xs mt-1">{validationErrors.aboutYou}</p>
+                  <p className="text-red-500 text-sm mt-1">{validationErrors.aboutYou}</p>
                 )}
               </div>
             </section>
@@ -693,14 +711,16 @@ const HostRegistration: React.FC = () => {
               </div>
             </section>
 
-            {/* About Your Work */}
+            {/* About Your Work (Internal only) */}
             <section>
               <h2 className="text-2xl font-bold text-umd-black mb-6">About Your Work</h2>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Tell us about your work *
                 </label>
+                <p className="text-sm text-gray-600 mb-2">This response is for our team only and will <strong>not</strong> be shown to students. We’ll ask for a student-facing description below.</p>
                 <textarea
+                  id="field-aboutWork"
                   placeholder="Please describe your job, responsibilities, industry, etc..."
                   value={formData.aboutWork}
                   onChange={(e) => handleInputChange('aboutWork', e.target.value)}
@@ -729,7 +749,7 @@ const HostRegistration: React.FC = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Company/Org Name *
                   </label>
-                  <p className="text-xs text-gray-500 mb-2">
+                  <p className="text-sm text-gray-600 mb-2">
                     Note: if K-12 education, please include the county & school name
                   </p>
                   <div className="relative company-autocomplete">
@@ -751,6 +771,7 @@ const HostRegistration: React.FC = () => {
                           ? 'border-green-500 focus:border-green-500' 
                           : 'focus:border-blue-500 focus:ring-2 focus:ring-blue-200'
                       }`}
+                      id="field-organization"
                       required
                     />
                     <div className="absolute right-3 top-3">
@@ -837,6 +858,7 @@ const HostRegistration: React.FC = () => {
                     placeholder="Your Job Title"
                     value={formData.jobTitle}
                     onChange={(e) => handleInputChange('jobTitle', e.target.value)}
+                    id="field-jobTitle"
                     required
                   />
                 </div>
@@ -870,6 +892,7 @@ const HostRegistration: React.FC = () => {
                     placeholder="123 Main St, Suite 100"
                     value={formData.companyAddress}
                     onChange={(e) => handleInputChange('companyAddress', e.target.value)}
+                    id="field-companyAddress"
                     required
                   />
                 </div>
@@ -897,6 +920,7 @@ const HostRegistration: React.FC = () => {
                           ? 'border-red-500 focus:border-red-500' 
                           : 'focus:border-blue-500 focus:ring-2 focus:ring-blue-200'
                       }`}
+                      id="field-cityState"
                       required
                     />
                     {validationErrors.cityState && (
@@ -931,6 +955,7 @@ const HostRegistration: React.FC = () => {
                     placeholder="20742"
                     value={formData.zipCode}
                     onChange={(e) => handleInputChange('zipCode', e.target.value)}
+                    id="field-zipCode"
                     required
                   />
                 </div>
@@ -1004,219 +1029,7 @@ const HostRegistration: React.FC = () => {
               </p>
             </section>
 
-            {/* Type of Opportunity */}
-            <section>
-              <h2 className="text-2xl font-bold text-umd-black mb-6">Type of Opportunity</h2>
-              <p className="text-gray-700 mb-4">
-                For the FALL 2025 semester, which option would you like to offer UMD undergraduate students?
-              </p>
-              <p className="text-sm text-gray-500 mb-4">
-                (Note if you would like to offer both options, please complete a form for each type)
-              </p>
-              <div className="space-y-3">
-                <label className="flex items-start space-x-3 p-4 bg-gray-50 rounded-lg hover:bg-blue-50 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="opportunityType"
-                    value="in-person"
-                    checked={formData.opportunityType === 'in-person'}
-                    onChange={(e) => handleInputChange('opportunityType', e.target.value)}
-                    className="w-4 h-4 text-blue-600 mt-1"
-                  />
-                  <div>
-                    <span className="font-medium">In-person job shadowing experience.</span>
-                    <p className="text-sm text-gray-600">
-                      I understand I must be reporting to a physical office/workplace and that I am not teleworking.
-                    </p>
-                  </div>
-                </label>
-                <label className="flex items-start space-x-3 p-4 bg-gray-50 rounded-lg hover:bg-blue-50 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="opportunityType"
-                    value="virtual"
-                    checked={formData.opportunityType === 'virtual'}
-                    onChange={(e) => handleInputChange('opportunityType', e.target.value)}
-                    className="w-4 h-4 text-blue-600 mt-1"
-                  />
-                  <div>
-                    <span className="font-medium">60-minute virtual informational interviews</span>
-                    <p className="text-sm text-gray-600">
-                      with UMD students to learn more about my career field.
-                    </p>
-                  </div>
-                </label>
-              </div>
-            </section>
-
-            {/* Work Location Accessibility (only for in-person) */}
-            {formData.opportunityType === 'in-person' && (
-              <section>
-                <h2 className="text-2xl font-bold text-umd-black mb-6">Work Location Accessibility</h2>
-                <div className="space-y-6">
-                  <div>
-                    <p className="text-gray-700 font-medium mb-3">
-                      Is the work address you provided DC metro accessible (train or bus) from College Park?
-                    </p>
-                    <div className="flex space-x-6">
-                      <label className="flex items-center space-x-2">
-                        <input
-                          type="radio"
-                          name="isDcMetroAccessible"
-                          checked={formData.isDcMetroAccessible === true}
-                          onChange={() => handleInputChange('isDcMetroAccessible', true)}
-                          className="w-4 h-4 text-blue-600"
-                        />
-                        <span>Yes</span>
-                      </label>
-                      <label className="flex items-center space-x-2">
-                        <input
-                          type="radio"
-                          name="isDcMetroAccessible"
-                          checked={formData.isDcMetroAccessible === false}
-                          onChange={() => handleInputChange('isDcMetroAccessible', false)}
-                          className="w-4 h-4 text-blue-600"
-                        />
-                        <span>No</span>
-                      </label>
-                      <label className="flex items-center space-x-2">
-                        <input
-                          type="radio"
-                          name="isDcMetroAccessible"
-                          checked={formData.workLocationAccessibilityUnsure === true}
-                          onChange={() => {
-                            handleInputChange('workLocationAccessibilityUnsure', true);
-                            handleInputChange('isDcMetroAccessible', undefined);
-                          }}
-                          className="w-4 h-4 text-blue-600"
-                        />
-                        <span>Unsure</span>
-                      </label>
-                    </div>
-                  </div>
-
-                  <div>
-                    <p className="text-gray-700 font-medium mb-3">
-                      As a professional interested in hosting one or more University of Maryland, College Park students 
-                      for an in-person job shadowing experience, I understand that I must be reporting to a physical 
-                      office/workplace and not teleworking on the day the student job shadows me.
-                    </p>
-                    <div className="flex space-x-6">
-                      <label className="flex items-center space-x-2">
-                        <input
-                          type="radio"
-                          name="isPhysicalOffice"
-                          checked={formData.isPhysicalOffice === true}
-                          onChange={() => handleInputChange('isPhysicalOffice', true)}
-                          className="w-4 h-4 text-blue-600"
-                        />
-                        <span>Yes</span>
-                      </label>
-                      <label className="flex items-center space-x-2">
-                        <input
-                          type="radio"
-                          name="isPhysicalOffice"
-                          checked={formData.isPhysicalOffice === false}
-                          onChange={() => handleInputChange('isPhysicalOffice', false)}
-                          className="w-4 h-4 text-blue-600"
-                        />
-                        <span>No</span>
-                      </label>
-                    </div>
-                  </div>
-
-                  <div>
-                    <p className="text-gray-700 font-medium mb-3">
-                      Are you a federal government agency or federal contractor?
-                    </p>
-                    <div className="flex space-x-6">
-                      <label className="flex items-center space-x-2">
-                        <input
-                          type="radio"
-                          name="isFederalAgency"
-                          checked={formData.isFederalAgency === true}
-                          onChange={() => handleInputChange('isFederalAgency', true)}
-                          className="w-4 h-4 text-blue-600"
-                        />
-                        <span>Yes</span>
-                      </label>
-                      <label className="flex items-center space-x-2">
-                        <input
-                          type="radio"
-                          name="isFederalAgency"
-                          checked={formData.isFederalAgency === false}
-                          onChange={() => handleInputChange('isFederalAgency', false)}
-                          className="w-4 h-4 text-blue-600"
-                        />
-                        <span>No</span>
-                      </label>
-                    </div>
-                  </div>
-                </div>
-              </section>
-            )}
-
-            {/* Citizenship & Background Check Requirements */}
-            <section>
-              <h2 className="text-2xl font-bold text-umd-black mb-6">Requirements</h2>
-              <div className="space-y-6">
-                <div>
-                  <p className="text-gray-700 font-medium mb-3">
-                    For this one day job shadowing experience, do you require that the student is a US Citizen?
-                  </p>
-                  <div className="flex space-x-6">
-                    <label className="flex items-center space-x-2">
-                      <input
-                        type="radio"
-                        name="requiresCitizenship"
-                        checked={formData.requiresCitizenship === true}
-                        onChange={() => handleInputChange('requiresCitizenship', true)}
-                        className="w-4 h-4 text-blue-600"
-                      />
-                      <span>Yes</span>
-                    </label>
-                    <label className="flex items-center space-x-2">
-                      <input
-                        type="radio"
-                        name="requiresCitizenship"
-                        checked={formData.requiresCitizenship === false}
-                        onChange={() => handleInputChange('requiresCitizenship', false)}
-                        className="w-4 h-4 text-blue-600"
-                      />
-                      <span>No</span>
-                    </label>
-                  </div>
-                </div>
-
-                <div>
-                  <p className="text-gray-700 font-medium mb-3">
-                    For this one day job shadowing experience, will the student(s) be required to complete and pay for a background check?
-                  </p>
-                  <div className="flex space-x-6">
-                    <label className="flex items-center space-x-2">
-                      <input
-                        type="radio"
-                        name="requiresBackgroundCheck"
-                        checked={formData.requiresBackgroundCheck === true}
-                        onChange={() => handleInputChange('requiresBackgroundCheck', true)}
-                        className="w-4 h-4 text-blue-600"
-                      />
-                      <span>Yes</span>
-                    </label>
-                    <label className="flex items-center space-x-2">
-                      <input
-                        type="radio"
-                        name="requiresBackgroundCheck"
-                        checked={formData.requiresBackgroundCheck === false}
-                        onChange={() => handleInputChange('requiresBackgroundCheck', false)}
-                        className="w-4 h-4 text-blue-600"
-                      />
-                      <span>No</span>
-                    </label>
-                  </div>
-                </div>
-              </div>
-            </section>
+            {/* Type of Opportunity and logistics moved to Semester Registration */}
 
             {/* Organization and Experience Description */}
             <section>
@@ -1230,7 +1043,7 @@ const HostRegistration: React.FC = () => {
                     Please describe your organization in greater detail. *
                   </label>
                   <p className="text-xs text-gray-500 mb-3 bg-blue-50 p-3 rounded-lg border-l-4 border-blue-400">
-                    💡 This description will be shared with students to help them identify a good fit. Include your organization's mission, size, culture, and what makes it unique.
+                    💡 This description <strong>will be shared with students</strong> to help them identify a good fit. Include your organization's mission, size, culture, and what makes it unique.
                   </p>
                   <div className="relative">
                     <textarea
@@ -1259,7 +1072,7 @@ const HostRegistration: React.FC = () => {
                     Please describe what student(s) may experience while spending time with you. *
                   </label>
                   <p className="text-xs text-gray-500 mb-3 bg-green-50 p-3 rounded-lg border-l-4 border-green-400">
-                    ✨ Include insights into your work, typical activities, and what student career interests would benefit most from this experience.
+                    ✨ Include insights into your work, typical activities, and what student career interests would benefit most from this experience. <strong>This will be shared with students.</strong>
                   </p>
                   <div className="relative">
                     <textarea
@@ -1343,10 +1156,10 @@ const HostRegistration: React.FC = () => {
             <div className="text-center pt-8 border-t-2 border-gray-100">
               <div className="mb-6">
                 <p className="text-lg font-medium text-gray-700 mb-2">
-                  Ready to submit your host registration?
+                  Ready to submit your IFAD host profile?
                 </p>
-                <p className="text-sm text-gray-500">
-                  Please review your information before submitting. You can always update it later.
+                <p className="text-sm text-gray-600">
+                  By submitting this form, you agree to have an IFAD host profile. You will register for the program each semester you want to participate.
                 </p>
               </div>
               
@@ -1370,16 +1183,14 @@ const HostRegistration: React.FC = () => {
                 ) : getFormProgress() < 70 ? (
                   `Complete form (${getFormProgress()}%)`
                 ) : (
-                  'Submit Registration'
+                  'Submit Profile'
                 )}
               </Button>
               
               <div className="mt-4 space-y-2">
-                <p className="text-xs text-gray-400">
-                  By submitting this form, you agree to participate in the UMD IFAD program.
-                </p>
+                <p className="text-sm text-gray-500">You can edit your profile later if needed.</p>
                 {getFormProgress() < 70 && (
-                  <p className="text-xs text-orange-600 flex items-center justify-center space-x-1">
+                  <p className="text-sm text-orange-600 flex items-center justify-center space-x-1">
                     <span>⚠️</span>
                     <span>Please complete at least 70% of the form to submit ({70 - getFormProgress()}% remaining)</span>
                   </p>

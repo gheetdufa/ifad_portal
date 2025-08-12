@@ -60,14 +60,7 @@ export interface SemesterRegistration {
 }
 
 class ApiService {
-  private baseUrl = (() => {
-    const envUrl = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
-    if (envUrl) {
-      return envUrl;
-    }
-    // Fallback for development
-    return '';
-  })();
+  private baseUrl = 'https://rystvdeu40.execute-api.us-east-1.amazonaws.com/prod';
   
   // In-memory storage for demo purposes - replace with actual database calls
   private hosts: any[] = [];
@@ -94,6 +87,12 @@ class ApiService {
     const existingHosts = JSON.parse(localStorage.getItem('ifad_mock_hosts') || '[]');
     const updated = [host, ...existingHosts];
     localStorage.setItem('ifad_mock_hosts', JSON.stringify(updated));
+  }
+
+  private persistMockSemesterRegistration(reg: SemesterRegistration & { userId?: string }) {
+    const existing = JSON.parse(localStorage.getItem('ifad_mock_semester_regs') || '[]');
+    const updated = [reg, ...existing];
+    localStorage.setItem('ifad_mock_semester_regs', JSON.stringify(updated));
   }
 
   private getAuthHeaders(): HeadersInit {
@@ -574,25 +573,67 @@ class ApiService {
     availableDays: string[];
     experienceType: 'virtual' | 'in-person' | 'both';
     additionalInfo: string;
+    requiresBackgroundCheck?: boolean;
+    requiresCitizenship?: boolean;
+    isDcMetroAccessible?: boolean;
+    dmvAreaConfirm?: boolean;
+    holidayBreakAvailable?: boolean;
+    understandPhysicalOffice?: boolean;
   }): Promise<ApiResponse<SemesterRegistration>> {
     try {
-      if (!this.baseUrl) throw new Error('API URL not configured.');
-      const response = await fetch(`${this.baseUrl}/users/semester-registration`, {
-        method: 'POST',
-        headers: this.getAuthHeaders(),
-        body: JSON.stringify(registrationData),
-      });
-
-      const result = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(result.message || 'Failed to register for semester');
+      if (!this.baseUrl) {
+        const currentUserEmail = localStorage.getItem('ifad_current_user_email');
+        const hosts = JSON.parse(localStorage.getItem('ifad_mock_hosts') || '[]');
+        const host = hosts.find((h: any) => h.email === currentUserEmail || h.workEmail === currentUserEmail);
+        const baseRecord = {
+          semester: registrationData.semester,
+          maxStudents: registrationData.maxStudents,
+          availableDays: registrationData.availableDays,
+          additionalInfo: registrationData.additionalInfo,
+          status: 'pending' as const,
+          registeredAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+        if (registrationData.experienceType === 'both') {
+          const rec1: SemesterRegistration = { ...baseRecord, experienceType: 'in-person' } as SemesterRegistration;
+          const rec2: SemesterRegistration = { ...baseRecord, experienceType: 'virtual' } as SemesterRegistration;
+          this.persistMockSemesterRegistration({ ...rec1, userId: host?.userId || host?.id });
+          this.persistMockSemesterRegistration({ ...rec2, userId: host?.userId || host?.id });
+          return { success: true, data: rec1, message: 'Semester registration saved for both options (dev mode)' };
+        }
+        const record: SemesterRegistration = { ...baseRecord, experienceType: registrationData.experienceType } as SemesterRegistration;
+        this.persistMockSemesterRegistration({ ...record, userId: host?.userId || host?.id });
+        return { success: true, data: record, message: 'Semester registration saved (dev mode)' };
       }
-
-      return {
-        success: true,
-        data: result.data,
-      };
+      // Backend mode: if both, create two registrations
+      if (registrationData.experienceType === 'both') {
+        const makeCall = async (experienceType: 'virtual' | 'in-person') => {
+          const response = await fetch(`${this.baseUrl}/users/semester-registration`, {
+            method: 'POST',
+            headers: this.getAuthHeaders(),
+            body: JSON.stringify({ ...registrationData, experienceType }),
+          });
+          const result = await response.json();
+          if (!response.ok) {
+            throw new Error(result.message || `Failed to register for semester (${experienceType})`);
+          }
+          return result.data as SemesterRegistration;
+        };
+        const first = await makeCall('in-person');
+        await makeCall('virtual');
+        return { success: true, data: first, message: 'Semester registrations created for both options' };
+      } else {
+        const response = await fetch(`${this.baseUrl}/users/semester-registration`, {
+          method: 'POST',
+          headers: this.getAuthHeaders(),
+          body: JSON.stringify(registrationData),
+        });
+        const result = await response.json();
+        if (!response.ok) {
+          throw new Error(result.message || 'Failed to register for semester');
+        }
+        return { success: true, data: result.data };
+      }
     } catch (error) {
       console.error('Error registering for semester:', error);
       return {

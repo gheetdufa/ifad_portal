@@ -199,5 +199,6 @@ export const IDENTITY_OPTIONS = [
   'Undocumented/DACA',
   'Veteran',
   'Woman',
-  'Other'
+  'Other',
+  'Prefer not to say'
 ] as const;
