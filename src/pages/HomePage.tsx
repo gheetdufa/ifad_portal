@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Users, Award, Star, Target, Briefcase, ChevronDown, ChevronUp } from 'lucide-react';
+import { Users, Award, Star, Target, Briefcase, ChevronDown, ChevronUp, Video, MessageSquareQuote } from 'lucide-react';
 import Button from '../components/ui/Button';
 
 // Add custom styles for animations
@@ -16,8 +16,31 @@ const customStyles = `
     }
   }
   
+  @keyframes rotateClockwise {
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
+    }
+  }
+  
   .animate-fadeIn {
     animation: fadeIn 0.5s ease-out forwards;
+  }
+  
+  .animate-rotate-clockwise {
+    animation: rotateClockwise 40s linear infinite;
+  }
+
+  @keyframes marqueeScroll {
+    0% { transform: translateX(0); }
+    100% { transform: translateX(-50%); }
+  }
+
+  .animate-marquee {
+    animation: marqueeScroll 60s linear infinite;
+    will-change: transform;
   }
 `;
 
@@ -27,16 +50,26 @@ if (typeof document !== 'undefined') {
   styleSheet.innerText = customStyles;
   document.head.appendChild(styleSheet);
 }
-import IFADLogoUpdated from '../assets/ifad_logo_updated.png';
-import Collage1 from '../assets/Collage_2024-12-05_19_51_38.jpg';
-import Collage2 from '../assets/Collage_2024-12-05_20_37_53.jpg';
-import Collage3 from '../assets/Collage_2024-12-05_20_59_03.jpg';
-import Collage4 from '../assets/Collage_2024-12-05_21_00_42.jpg';
-import UMDInterns1 from '../assets/2025 UMD interns.jpg';
+import InternForADayRing from '../assets/intern_for_a_day_ring.svg';
+import InternForADayText from '../assets/intern_for_a_day_text.svg';
+// Slideshow assets (all from photo_slideshow folder)
+import Homeland1 from '../assets/photo_slideshow/homeland security.png';
+import Homeland2 from '../assets/photo_slideshow/homeland_security.png';
+import Homeland3 from '../assets/photo_slideshow/Screenshot 2025-08-12 015401.png';
+import Homeland4 from '../assets/photo_slideshow/Screenshot 2025-08-12 015415.png';
+import UMDInterns1 from '../assets/photo_slideshow/2025 UMD interns.jpg';
+import BHChambers from '../assets/photo_slideshow/BH-Chambers.webp';
+import Image001 from '../assets/photo_slideshow/image001-1.webp';
+import JudgeOffice from '../assets/photo_slideshow/judge office.jpg';
+// New slideshow images
+import Medical from '../assets/photo_slideshow/medical.jpg';
+import Podcast from '../assets/photo_slideshow/podcast.png';
+import News from '../assets/photo_slideshow/news.jpg';
 
 const HomePage: React.FC = () => {
   const [isVisible, setIsVisible] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [isTransitioning, setIsTransitioning] = useState(false);
   const [activeTimeline, setActiveTimeline] = useState<'general' | 'host' | 'student'>('general');
   const [activeGeneralSemester, setActiveGeneralSemester] = useState<'fall' | 'spring'>('fall');
 
@@ -46,20 +79,91 @@ const HomePage: React.FC = () => {
 
   // Gallery images for rotating display
   const galleryImages = [
-    { src: Collage1, alt: 'Students at DHS', caption: 'Department of Homeland Security' },
-    { src: Collage2, alt: 'Student experiences', caption: 'Professional Networking' },
-    { src: Collage3, alt: 'Student team', caption: 'Team Collaboration' },
-    { src: Collage4, alt: 'Student presentation', caption: 'Professional Development' },
-    { src: UMDInterns1, alt: 'UMD interns group', caption: 'UMD Intern Cohort' },
+    { src: UMDInterns1, alt: 'Navy Federal Credit Union visit', caption: 'Navy Federal Credit Union' },
+    { src: Homeland1, alt: 'Homeland Security networking event', caption: 'Homeland Security – Networking' },
+    { src: BHChambers, alt: 'BH-Chambers experience', caption: 'BH-Chambers' },
+    { src: Homeland2, alt: 'Homeland Security office visit', caption: 'Homeland Security – Office Visit' },
+    { src: Image001, alt: 'Circuit Court for Montgomery County', caption: 'Circuit Court for Montgomery County' },
+    { src: Homeland3, alt: 'Homeland Security team discussion', caption: 'Homeland Security – Team Collaboration' },
+    { src: Medical, alt: 'Visit to hospital', caption: 'Visit to Hospital' },
+    { src: Homeland4, alt: 'Homeland Security presentation', caption: 'Homeland Security – Presentation' },
+    { src: Podcast, alt: 'Brand Groupies', caption: 'Brand Groupies' },
+    { src: JudgeOffice, alt: 'Circuit Court for Montgomery County offices', caption: 'Montgomery County Circuit Court' },
+    { src: News, alt: "Voice of America's English to Africa division", caption: "Voice of America's English to Africa Division" },
   ];
+
+  // Feedback quotes for scrolling marquee in Student Experience section
+  const feedbackQuotes: { text: string; source: string }[] = [
+    {
+      text:
+        "I hosted 3 virtual participants -- all were curious, well prepared (had researched me on Linked in and had looked at my organization's web page) and open to suggestions. I lined two of them up for an additional interview with colleagues.",
+      source: 'United State Department of Agriculture',
+    },
+    {
+      text:
+        'This year was the best year yet! The students were actively interested in my field of work and not just my company. They asked thoughtful questions and showed their excitement.',
+      source: 'LinkedIn',
+    },
+    {
+      text:
+        'The Intern for a Day program is a great initiative, and it was a pleasure hosting students. It allows them to gain real-world experience and insights into our industry. We appreciate the opportunity to help foster their career development.',
+      source: 'Beta Systems International',
+    },
+    {
+      text:
+        'I thoroughly enjoyed having the interns. Each one was very respectful and ready to listen and learn. Some gelled with the team so well it felt like they were one of the staff, and by the end of the day we were sad to see them go. I would definitely host students again and would love to make this a regular event each spring and fall.',
+      source: 'Carrie Murray Nature Center',
+    },
+    {
+      text:
+        'My biggest highlight was seeing opportunities available that I never had thought about. I was able to learn about a career that involved traveling the world, while on a good salary and being trained to work for the company.',
+      source: 'UMD Student Match w/ U.S. Department of State Diplomatic Security Service',
+    },
+    {
+      text:
+        'My experience made me realize that I needed to change my major. Especially speaking to employees of the company that specialized/had leadership roles where I wanted to be in the future.',
+      source: 'UMD Student Match w/ Crosby Marketing',
+    },
+    {
+      text: 'I definitely gained networking skills and insight into the industry I explored.',
+      source: 'UMD Student Match w/ ESPN',
+    },
+    {
+      text:
+        'I had never previously considered how different fields within the scope of social and behavioral sciences are connected to one another, but this experience showed me how skills learned in psychology and disability skills were interconnected. With this knowledge, I gained insight on how the data-driven aspect, along with the ABA facilitation, helps to fit the needs of each student.',
+      source: 'UMD Student Match w/ Ivymount',
+    },
+    {
+      text:
+        "The highlight of my day was when the nurse that was helping the mother deliver her baby asked me if I wanted to help with the delivery process. I was ecstatic when she asked me to hold one of the mother's legs so that it would be easier for her to push, and I honestly believe labor and delivery is such a rewarding field because after 3 hours of witnessing the mother struggle to push, the look on her face when she finally was able to meet her baby boy was priceless.",
+      source: 'UMD Student Match',
+    },
+    {
+      text:
+        'In speaking with Ms. Hymes about my internship plans for the summer, she informed me initially that the 2018 internship class for VOA English to Africa was full, but after sending my thank you note and expressing interest in a fall internship spot, she told me that there was one more summer spot available, and I jumped at it!',
+      source: 'UMD Student Match w/ VOA English to Africa',
+    },
+  ];
+
+  // Function to change image with transition
+  const changeImage = (newIndex: number) => {
+    if (newIndex === currentImageIndex) return;
+    
+    setIsTransitioning(true);
+    setTimeout(() => {
+      setCurrentImageIndex(newIndex);
+      setIsTransitioning(false);
+    }, 250); // Half of the transition duration
+  };
 
   // Auto-rotate gallery
   useEffect(() => {
     const interval = setInterval(() => {
-      setCurrentImageIndex((prevIndex) => (prevIndex + 1) % galleryImages.length);
+      const nextIndex = (currentImageIndex + 1) % galleryImages.length;
+      changeImage(nextIndex);
     }, 4000);
     return () => clearInterval(interval);
-  }, [galleryImages.length]);
+  }, [currentImageIndex, galleryImages.length]);
 
   // General Timeline Data (from transcript)
   const generalTimelines = {
@@ -98,7 +202,7 @@ const HomePage: React.FC = () => {
   return (
     <div className="min-h-screen bg-white overflow-hidden">
       {/* Hero Section - Black Background with IFAD Logo */}
-      <section className="relative bg-black text-white overflow-hidden min-h-screen flex items-center" role="banner" aria-label="IFAD Program Introduction">
+      <section className="relative bg-black text-white overflow-hidden min-h-screen md:min-h-[95vh] flex items-center" role="banner" aria-label="IFAD Program Introduction">
         {/* Animated Background Pattern */}
         <div className="absolute inset-0">
           <div className="absolute top-20 left-10 w-24 h-24 bg-gradient-to-br from-umd-gold to-yellow-400 rounded-full opacity-20 animate-float"></div>
@@ -119,19 +223,29 @@ const HomePage: React.FC = () => {
           </div>
         </div>
 
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 z-10">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 lg:py-20 z-10">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-center">
             {/* Left Side - IFAD Logo */}
-            <div className={`flex justify-center lg:justify-start lg:-ml-24 transform transition-all duration-1000 ${
+            <div className={`flex justify-center lg:justify-start lg:-ml-64 xl:-ml-80 2xl:-ml-96 transform transition-all duration-1000 ${
               isVisible ? 'translate-x-0 opacity-100' : '-translate-x-10 opacity-0'
             }`}>
               <div className="relative">
-                <img 
-                  src={IFADLogoUpdated} 
-                  alt="Intern for a Day Program Logo - University of Maryland Career Center" 
-                  className="relative h-[27rem] md:h-[35rem] object-contain drop-shadow-2xl transform hover:scale-110 transition-all duration-500 z-10 focus:outline-none focus:ring-4 focus:ring-umd-gold/50"
-                  tabIndex="0"
-                />
+                <div className="relative h-[28rem] sm:h-[36rem] md:h-[43rem] lg:h-[52rem] xl:h-[66rem] flex items-center justify-center group">
+                  {/* Rotating Ring */}
+                  <img 
+                    src={InternForADayRing} 
+                    alt="" 
+                    className="absolute inset-0 w-full h-full object-contain animate-rotate-clockwise group-hover:scale-110 transition-all duration-500"
+                    aria-hidden="true"
+                  />
+                  {/* Static Text - Made smaller */}
+                  <img 
+                    src={InternForADayText} 
+                    alt="Intern for a Day Program Logo - University of Maryland Career Center" 
+                    className="relative w-[70%] h-[70%] md:w-[72%] md:h-[72%] object-contain drop-shadow-2xl transform group-hover:scale-110 transition-all duration-500 z-10 focus:outline-none focus:ring-4 focus:ring-umd-gold/50"
+                    tabIndex={0}
+                  />
+                </div>
               </div>
             </div>
             
@@ -141,7 +255,7 @@ const HomePage: React.FC = () => {
             }`}>
               {/* Main Title */}
               <div className="mb-8">
-                <h1 className="text-5xl md:text-7xl font-black mb-4 leading-none tracking-tight">
+                <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-black mb-4 leading-none tracking-tight">
                   <span className="block bg-gradient-to-r from-umd-red via-red-400 to-umd-red bg-clip-text text-transparent">
                     INTERN
                   </span>
@@ -154,7 +268,7 @@ const HomePage: React.FC = () => {
               
               {/* Content Section */}
               <div>
-                <h2 className="text-3xl md:text-4xl font-bold mb-6 text-white">
+                <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold mb-4 sm:mb-6 text-white">
                   What is Intern for a Day (IFAD)?
                 </h2>
                 
@@ -164,15 +278,15 @@ const HomePage: React.FC = () => {
                   <div className="absolute bottom-0 left-0 w-24 h-24 bg-gradient-to-tr from-umd-red/20 to-transparent rounded-full translate-y-12 -translate-x-12"></div>
                   
                   <div className="relative z-10">
-                    <p className="text-lg md:text-xl leading-relaxed text-white font-light mb-6 text-left">
-                      The University Career Center's popular <span className="font-semibold text-umd-gold">Intern for a Day (IFAD) program</span> connects undergraduate UMD students with professionals (including alumni, parents/family members, and other off-campus partners) for <span className="font-semibold text-yellow-200">in-person job shadowing</span> or <span className="font-semibold text-yellow-200">virtual informational interviewing experiences</span> to explore potential career fields of interest.
+                    <p className="text-sm sm:text-base md:text-lg lg:text-xl leading-relaxed text-white font-light mb-4 sm:mb-6 text-left">
+                      The University of Maryland University Career Center's popular <span className="font-semibold text-umd-gold">Intern for a Day (IFAD) program</span> connects undergraduate UMD students with professionals (including alumni, parents/family members, and other off-campus partners) for <span className="italic text-white">in-person job shadowing</span> or <span className="italic text-white">virtual informational interviewing</span> experiences to explore potential career fields of interest.
                     </p>
                     
                     <div className="bg-black/20 rounded-2xl p-4 border-l-4 border-umd-gold mb-6">
                       <p className="text-base text-white leading-relaxed">
                         After participating in a <span className="font-semibold text-umd-gold">mandatory orientation</span> and completing an application, University Career Center staff match you with a professional of interest for a half- or full-day job shadowing experience or a virtual informational interview.
                       </p>
-                      <p className="text-sm text-yellow-200 leading-relaxed mt-3 italic">
+                      <p className="text-sm text-umd-gold leading-relaxed mt-3 italic">
                         <strong>Please note:</strong> Due to the high demand and limited host availability, we cannot guarantee that all students who apply will be matched in the program.
                       </p>
                     </div>
@@ -180,10 +294,10 @@ const HomePage: React.FC = () => {
                     <div className="bg-gradient-to-r from-umd-red/20 to-red-900/20 rounded-2xl p-4 text-center border border-red-400/30">
                       <div className="flex items-center justify-center mb-2">
                         <div className="w-2 h-2 bg-umd-gold rounded-full mr-2"></div>
-                        <p className="text-base font-bold text-yellow-200 uppercase tracking-wide">Important Notice</p>
+                        <p className="text-base font-bold text-umd-gold uppercase tracking-wide">Important Notice</p>
                         <div className="w-2 h-2 bg-umd-gold rounded-full ml-2"></div>
                       </div>
-                      <p className="text-base text-yellow-100 font-medium">
+                      <p className="text-base text-umd-gold font-medium">
                         IFAD is currently only available to UMD undergraduate students
                       </p>
                     </div>
@@ -195,13 +309,14 @@ const HomePage: React.FC = () => {
         </div>
       </section>
 
+      {/* Scrolling Feedback Marquee – relocated down to Student Experience */}
 
       {/* How To Participate Section - White Background */}
-      <section className="py-20 bg-white relative overflow-hidden" role="main" aria-label="Participation Information">
+      <section className="py-8 sm:py-12 bg-white relative overflow-hidden" role="main" aria-label="Participation Information">
         {/* Subtle Background Images */}
         <div className="absolute inset-0 opacity-5 pointer-events-none">
           <img 
-            src={Collage2} 
+            src={Homeland2} 
             alt="" 
             className="absolute top-10 right-10 w-48 h-48 object-cover rounded-full blur-sm"
             aria-hidden="true"
@@ -213,112 +328,201 @@ const HomePage: React.FC = () => {
             aria-hidden="true"
           />
           <img 
-            src={Collage3} 
+            src={Homeland3} 
             alt="" 
             className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-32 h-32 object-cover rounded-full blur-sm opacity-30"
             aria-hidden="true"
           />
         </div>
         
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
-          
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-            {/* For Professionals */}
-            <div className="text-center">
-              <h2 className="text-2xl font-bold text-umd-black mb-6">
-                For <span className="text-umd-red">Professionals</span> Interested in<br />
-                Hosting IFAD Students
+        <div className="max-w-full mx-auto px-4 sm:px-8 lg:px-12 xl:px-16 relative">
+          <div className="space-y-6">
+            {/* Section Headers */}
+            <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 sm:gap-6 lg:gap-8 text-center">
+              <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-orange-600 to-red-600">
+                For Professionals
               </h2>
+              <div></div>
+              <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-green-600 to-emerald-600">
+                For Students
+              </h2>
+            </div>
+            
+            <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 sm:gap-8 items-stretch">
               
-              <div className="bg-umd-red rounded-3xl p-8 min-h-96 flex items-center justify-center shadow-2xl transform hover:scale-105 transition-all duration-300">
-                <div className="text-center text-white">
-                  <div className="text-2xl font-bold mb-4">HOST REGISTRATION PROCESS</div>
-                  <div className="space-y-3 text-left">
-                    <div className="flex items-start space-x-3">
-                      <div className="w-6 h-6 bg-white rounded-full flex items-center justify-center flex-shrink-0 mt-1">
-                        <span className="text-umd-red font-bold text-sm">1</span>
-                      </div>
-                      <p className="text-sm leading-relaxed">Complete Host Registration during open period</p>
-                    </div>
-                    <div className="flex items-start space-x-3">
-                      <div className="w-6 h-6 bg-white rounded-full flex items-center justify-center flex-shrink-0 mt-1">
-                        <span className="text-umd-red font-bold text-sm">2</span>
-                      </div>
-                      <p className="text-sm leading-relaxed">Host Vetting and Confirmation process</p>
-                    </div>
-                    <div className="flex items-start space-x-3">
-                      <div className="w-6 h-6 bg-white rounded-full flex items-center justify-center flex-shrink-0 mt-1">
-                        <span className="text-umd-red font-bold text-sm">3</span>
-                      </div>
-                      <p className="text-sm leading-relaxed">Receive Student Match(es) from University Career Center</p>
-                    </div>
-                    <div className="flex items-start space-x-3">
-                      <div className="w-6 h-6 bg-white rounded-full flex items-center justify-center flex-shrink-0 mt-1">
-                        <span className="text-umd-red font-bold text-sm">4</span>
-                      </div>
-                      <p className="text-sm leading-relaxed">Host Job Shadowing or Informational Interview with Your Student(s)</p>
+              {/* For Professionals - Host Box */}
+              <div className="bg-gradient-to-br from-orange-50 via-white to-red-50 rounded-2xl p-6 shadow-xl border border-orange-200/50 relative overflow-hidden hover:shadow-2xl transition-all duration-300 h-full">
+                <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-bl from-orange-200/20 to-transparent rounded-full -translate-y-12 translate-x-12"></div>
+                
+                <div className="relative">
+                  {/* Header */}
+                  <div className="text-center mb-4">
+                    <div className="inline-flex items-center justify-center w-14 h-14 bg-gradient-to-br from-orange-500 to-red-500 rounded-xl shadow-lg mb-3">
+                      <span className="text-2xl">🏢</span>
                     </div>
                   </div>
-                  <div className="mt-6">
-                    <a href="/register/host" target="_blank" rel="noopener noreferrer" className="bg-white text-umd-red px-6 py-2 rounded-full font-bold hover:bg-gray-100 transition-colors focus:outline-none focus:ring-4 focus:ring-white/50" aria-label="Register as a professional host">
-                      Register as Host
-                    </a>
+                
+                <h3 className="text-base font-bold text-orange-700 mb-3">
+                  To register and participate in Intern for a Day as a HOST:
+                </h3>
+                
+                {/* Steps */}
+                <div className="space-y-2 mb-4">
+                  {[
+                    "Create an Intern for a Day (IFAD) host profile",
+                    "Host complete the host registration to be an IFAD host for 20xx semester during the opening period",
+                    "IFAD Coordinators will begin the matching process after student applications are submitted",
+                    "Host & student(s) will be notified about their matching status via email",
+                    "Host & student(s) schedules IFAD experience based on availabilities",
+                    "Host complete the IFAD experience with student(s) by the end of the semester",
+                    "Host completes the host experience survey and provides feedback"
+                  ].map((step, index) => (
+                    <div key={index} className="flex items-start space-x-3 bg-white/60 rounded-lg p-2">
+                      <div className="flex-shrink-0 w-6 h-6 bg-gradient-to-br from-orange-500 to-red-500 rounded-full flex items-center justify-center mt-0.5">
+                        <span className="text-white font-bold text-xs">{index + 1}</span>
+                      </div>
+                      <p className="text-gray-800 text-sm leading-relaxed">{step}</p>
+                    </div>
+                  ))}
+                </div>
+                
+                {/* Notice */}
+                <div className="bg-amber-50 border-l-4 border-orange-500 p-3 mb-4 rounded-r-lg">
+                  <p className="text-sm text-gray-700">
+                    <strong>NOTE:</strong> We cannot guarantee we will be able to match you with a student, but we will try our best! You will be notified regardless of whether you were matched or not.
+                  </p>
+                </div>
+                
+                {/* Buttons */}
+                <div className="flex flex-col gap-3 sm:gap-2">
+                  <a 
+                    href="/register/host" 
+                    className="bg-gradient-to-r from-orange-500 to-red-500 text-white px-6 py-4 rounded-lg font-bold hover:from-orange-600 hover:to-red-600 transition-all duration-300 text-center text-base min-h-[48px] touch-manipulation"
+                  >
+                    Create IFAD Host Profile
+                  </a>
+                  <a 
+                    href="/login" 
+                    className="bg-white text-orange-600 border-2 border-orange-500 px-6 py-4 rounded-lg font-bold hover:bg-orange-50 transition-all duration-300 text-center text-base min-h-[48px] touch-manipulation"
+                  >
+                    Login
+                  </a>
+                </div>
+              </div>
+            </div>
+
+              {/* IFAD Media Gallery Section - Middle Column */}
+              <div className="bg-gradient-to-br from-umd-gold/20 via-yellow-50 to-umd-gold/10 backdrop-blur-sm rounded-2xl p-4 sm:p-6 shadow-xl border border-yellow-200/60 h-full flex flex-col justify-start">
+                {/* Image Gallery - Natural photo dimensions */}
+                <div className="flex-grow flex items-center justify-center">
+                  <div className="max-w-lg max-h-[300px] sm:max-h-[400px] md:max-h-[500px] lg:max-h-[750px] bg-gray-100 rounded-xl overflow-hidden">
+                    <img 
+                      src={galleryImages[currentImageIndex].src} 
+                      alt={galleryImages[currentImageIndex].alt}
+                      className={`w-full h-auto object-contain shadow-lg max-h-[300px] sm:max-h-[400px] md:max-h-[500px] lg:max-h-[750px] transition-opacity duration-500 ease-in-out ${
+                        isTransitioning ? 'opacity-0' : 'opacity-100'
+                      }`}
+                    />
                   </div>
+                </div>
+                
+                {/* Picture Navigation Dots */}
+                <div className="flex justify-center mt-4 space-x-3 sm:space-x-2">
+                  {galleryImages.map((_, index) => (
+                    <button
+                      key={index}
+                      onClick={() => changeImage(index)}
+                      className={`w-4 h-4 sm:w-3 sm:h-3 rounded-full transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-umd-gold touch-manipulation min-h-[44px] min-w-[44px] sm:min-h-[24px] sm:min-w-[24px] flex items-center justify-center ${
+                        index === currentImageIndex ? 'bg-umd-gold shadow-lg scale-125' : 'bg-gray-400 hover:bg-gray-600'
+                      }`}
+                      aria-label={`View image ${index + 1} of ${galleryImages.length}: ${galleryImages[index].caption}`}
+                      aria-pressed={index === currentImageIndex}
+                    />
+                  ))}
+                </div>
+                
+                {/* Caption below gallery */}
+                <div className="mt-4 text-center">
+                  <p className={`text-base sm:text-lg md:text-xl font-semibold text-gray-800 transition-opacity duration-500 ease-in-out ${
+                    isTransitioning ? 'opacity-0' : 'opacity-100'
+                  }`}>
+                    {galleryImages[currentImageIndex].caption}
+                  </p>
+                </div>
+              </div>
+
+              {/* For Students - Student Box */}
+              <div className="bg-gradient-to-br from-green-50 via-white to-emerald-50 rounded-2xl p-6 shadow-xl border border-green-200/50 relative overflow-hidden hover:shadow-2xl transition-all duration-300 h-full">
+                <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-bl from-green-200/20 to-transparent rounded-full -translate-y-12 translate-x-12"></div>
+                
+                <div className="relative">
+                  {/* Header */}
+                  <div className="text-center mb-4">
+                    <div className="inline-flex items-center justify-center w-14 h-14 bg-gradient-to-br from-green-500 to-emerald-500 rounded-xl shadow-lg mb-3">
+                      <span className="text-2xl">🎓</span>
+                    </div>
+                  </div>
+                
+                <h3 className="text-base font-bold text-green-700 mb-3">
+                  To participate in Intern for a Day as a UMD STUDENT:
+                </h3>
+                
+                {/* Steps */}
+                <div className="space-y-2 mb-4">
+                  {[
+                    "Create an Intern for a Day (IFAD) student profile",
+                    "Interested students complete the mandatory IFAD orientation for 20xx semester (see Handshake for details)",
+                    "Students who complete the IFAD mandatory orientation will receive an IFAD application after the asynchronous orientation closes.",
+                    "Students complete and submit the IFAD student application by the designated deadline",
+                    "IFAD Coordinators will immediately begin the matching process after student applications are submitted",
+                    "Student & host will be notified about their matching status via email",
+                    "Student will reach out to the host to schedule the experience & provide an introduction.",
+                    "Student complete the IFAD experience with host match by the end of the semester",
+                    "Student complete the student experience survey and provide feedback"
+                  ].map((step, index) => (
+                    <div key={index} className="flex items-start space-x-3 bg-white/60 rounded-lg p-2">
+                      <div className="flex-shrink-0 w-6 h-6 bg-gradient-to-br from-green-500 to-emerald-500 rounded-full flex items-center justify-center mt-0.5">
+                        <span className="text-white font-bold text-xs">{index + 1}</span>
+                      </div>
+                      <p className="text-gray-800 text-sm leading-relaxed">{step}</p>
+                    </div>
+                  ))}
+                </div>
+                
+                {/* Notice */}
+                <div className="bg-amber-50 border-l-4 border-green-500 p-3 mb-4 rounded-r-lg">
+                  <p className="text-sm text-gray-700">
+                    <strong>NOTE:</strong> We cannot guarantee we will be able to match you with a host, but we will try our best! You will be notified regardless of whether you were matched or not.
+                  </p>
+                </div>
+                
+                {/* Buttons */}
+                <div className="flex flex-col gap-3 sm:gap-2">
+                  <a 
+                    href="/register/student" 
+                    className="bg-gradient-to-r from-green-500 to-emerald-500 text-white px-6 py-4 rounded-lg font-bold hover:from-green-600 hover:to-emerald-600 transition-all duration-300 text-center text-base min-h-[48px] touch-manipulation"
+                  >
+                    Create IFAD Student Profile
+                  </a>
+                  <a 
+                    href="/login" 
+                    className="bg-white text-green-600 border-2 border-green-500 px-6 py-4 rounded-lg font-bold hover:bg-green-50 transition-all duration-300 text-center text-base min-h-[48px] touch-manipulation"
+                  >
+                    Login
+                  </a>
                 </div>
               </div>
             </div>
             
-            {/* For Students */}
-            <div className="text-center">
-              <h2 className="text-2xl font-bold text-umd-black mb-6">
-                For <span className="text-umd-red">UMD undergraduate students</span><br />
-                interested in participating in IFAD
-              </h2>
-              
-              <div className="bg-umd-red rounded-3xl p-8 min-h-96 flex items-center justify-center shadow-2xl transform hover:scale-105 transition-all duration-300">
-                <div className="text-center text-white">
-                  <div className="text-2xl font-bold mb-4">STUDENT APPLICATION PROCESS</div>
-                  <div className="space-y-3 text-left">
-                    <div className="flex items-start space-x-3">
-                      <div className="w-6 h-6 bg-white rounded-full flex items-center justify-center flex-shrink-0 mt-1">
-                        <span className="text-umd-red font-bold text-sm">1</span>
-                      </div>
-                      <p className="text-sm leading-relaxed">Complete Mandatory Orientation on workplace etiquette and program logistics</p>
-                    </div>
-                    <div className="flex items-start space-x-3">
-                      <div className="w-6 h-6 bg-white rounded-full flex items-center justify-center flex-shrink-0 mt-1">
-                        <span className="text-umd-red font-bold text-sm">2</span>
-                      </div>
-                      <p className="text-sm leading-relaxed">Receive and Complete IFAD Application, ranking your top hosts</p>
-                    </div>
-                    <div className="flex items-start space-x-3">
-                      <div className="w-6 h-6 bg-white rounded-full flex items-center justify-center flex-shrink-0 mt-1">
-                        <span className="text-umd-red font-bold text-sm">3</span>
-                      </div>
-                      <p className="text-sm leading-relaxed">University Career Center Matches You with a Host</p>
-                    </div>
-                    <div className="flex items-start space-x-3">
-                      <div className="w-6 h-6 bg-white rounded-full flex items-center justify-center flex-shrink-0 mt-1">
-                        <span className="text-umd-red font-bold text-sm">4</span>
-                      </div>
-                      <p className="text-sm leading-relaxed">Engage in Job Shadowing or Informational Interviewing with Your Host</p>
-                    </div>
-                  </div>
-                  <div className="mt-6">
-                    <a href="/register/student" target="_blank" rel="noopener noreferrer" className="bg-white text-umd-red px-6 py-2 rounded-full font-bold hover:bg-gray-100 transition-colors focus:outline-none focus:ring-4 focus:ring-white/50" aria-label="Register as a student participant">
-                      Register as Student
-                    </a>
-                  </div>
-                </div>
-              </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* IFAD Timeline Section - Gradient Background */}
+
+      {/* IFAD Timeline Section - TEMPORARILY HIDDEN */}
+      {/* 
       <section className="py-16 bg-gradient-to-br from-gray-50 via-white to-gray-100 relative overflow-hidden">
-        {/* Background decorative elements */}
         <div className="absolute inset-0 overflow-hidden">
           <div className="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-bl from-umd-red/10 to-transparent rounded-full"></div>
           <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-gradient-to-tr from-umd-gold/10 to-transparent rounded-full"></div>
@@ -340,7 +544,6 @@ const HomePage: React.FC = () => {
             </p>
           </div>
           
-          {/* Enhanced Timeline Toggle Buttons - ADA Compliant */}
           <div className="flex justify-center mb-8">
             <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-2 flex items-center space-x-2 shadow-2xl border border-gray-200/50" role="tablist" aria-label="Timeline Options">
               <button
@@ -397,11 +600,8 @@ const HomePage: React.FC = () => {
             </div>
           </div>
 
-
-          {/* General Timeline */}
           {activeTimeline === 'general' && (
             <div className="max-w-6xl mx-auto animate-fadeIn" role="tabpanel" id="general-timeline-panel" aria-labelledby="general-timeline-tab">
-              {/* Semester Toggle */}
               <div className="flex justify-center mb-8">
                 <div className="bg-white/60 backdrop-blur-sm rounded-2xl p-1 flex items-center shadow-xl border border-white/20">
                   <button
@@ -429,9 +629,7 @@ const HomePage: React.FC = () => {
                 </div>
               </div>
 
-              {/* General Timeline Content */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                {/* Fall Timeline */}
                 <div className={`transition-all duration-700 transform ${
                   activeGeneralSemester === 'fall' ? 'opacity-100 scale-100 translate-x-0' : 'opacity-60 scale-95 translate-x-4'
                 }`}>
@@ -466,7 +664,6 @@ const HomePage: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Spring Timeline */}
                 <div className={`transition-all duration-700 transform ${
                   activeGeneralSemester === 'spring' ? 'opacity-100 scale-100 translate-x-0' : 'opacity-60 scale-95 -translate-x-4'
                 }`}>
@@ -504,7 +701,6 @@ const HomePage: React.FC = () => {
             </div>
           )}
 
-          {/* Host Timeline */}
           {activeTimeline === 'host' && (
             <div className="max-w-4xl mx-auto animate-fadeIn" role="tabpanel" id="host-timeline-panel" aria-labelledby="host-timeline-tab">
               <div className="bg-gradient-to-br from-orange-50 to-red-50 rounded-2xl p-8 shadow-2xl border border-orange-200/50 relative overflow-hidden">
@@ -519,23 +715,18 @@ const HomePage: React.FC = () => {
                     </h3>
                   </div>
                   
-                  {/* Timeline Container */}
                   <div className="relative">
-                    {/* Vertical Timeline Line */}
                     <div className="absolute left-8 top-6 bottom-6 w-1 bg-gradient-to-b from-orange-400 via-red-400 to-orange-400 rounded-full shadow-lg"></div>
                     
                     <div className="space-y-8">
                       {fall2025Timeline.host.map((item, index) => (
                         <div key={index} className="relative flex items-start">
-                          {/* Timeline Node */}
                           <div className="relative z-10 flex-shrink-0 w-16 h-16 bg-gradient-to-br from-orange-500 to-red-500 rounded-full flex items-center justify-center shadow-xl border-4 border-white">
                             <span className="text-white font-black text-xl">{index + 1}</span>
                           </div>
                           
-                          {/* Timeline Content */}
                           <div className="ml-8 flex-1">
                             <div className="bg-white/90 backdrop-blur-sm rounded-2xl p-6 shadow-xl border border-orange-200/50 transform hover:scale-105 hover:shadow-2xl transition-all duration-500 relative">
-                              {/* Arrow pointing to timeline */}
                               <div className="absolute left-0 top-6 w-0 h-0 border-t-[12px] border-t-transparent border-b-[12px] border-b-transparent border-r-[16px] border-r-white -translate-x-4"></div>
                               
                               <div className="flex items-center mb-3">
@@ -561,7 +752,6 @@ const HomePage: React.FC = () => {
             </div>
           )}
 
-          {/* Student Timeline */}
           {activeTimeline === 'student' && (
             <div className="max-w-4xl mx-auto animate-fadeIn" role="tabpanel" id="student-timeline-panel" aria-labelledby="student-timeline-tab">
               <div className="bg-gradient-to-br from-orange-50 to-red-50 rounded-2xl p-8 shadow-2xl border border-orange-200/50 relative overflow-hidden">
@@ -576,23 +766,18 @@ const HomePage: React.FC = () => {
                     </h3>
                   </div>
                   
-                  {/* Timeline Container */}
                   <div className="relative">
-                    {/* Vertical Timeline Line */}
                     <div className="absolute left-8 top-6 bottom-6 w-1 bg-gradient-to-b from-orange-400 via-red-400 to-orange-400 rounded-full shadow-lg"></div>
                     
                     <div className="space-y-8">
                       {fall2025Timeline.student.map((item, index) => (
                         <div key={index} className="relative flex items-start">
-                          {/* Timeline Node */}
                           <div className="relative z-10 flex-shrink-0 w-16 h-16 bg-gradient-to-br from-orange-500 to-red-500 rounded-full flex items-center justify-center shadow-xl border-4 border-white">
                             <span className="text-white font-black text-xl">{index + 1}</span>
                           </div>
                           
-                          {/* Timeline Content */}
                           <div className="ml-8 flex-1">
                             <div className="bg-white/90 backdrop-blur-sm rounded-2xl p-6 shadow-xl border border-orange-200/50 transform hover:scale-105 hover:shadow-2xl transition-all duration-500 relative">
-                              {/* Arrow pointing to timeline */}
                               <div className="absolute left-0 top-6 w-0 h-0 border-t-[12px] border-t-transparent border-b-[12px] border-b-transparent border-r-[16px] border-r-white -translate-x-4"></div>
                               
                               <div className="flex items-center mb-3">
@@ -619,9 +804,11 @@ const HomePage: React.FC = () => {
           )}
         </div>
       </section>
+      */}
+
 
       {/* Ready to Explore Section - Enhanced Design */}
-      <section className="py-24 bg-gradient-to-br from-black via-gray-900 to-black text-white relative overflow-hidden">
+      <section className="py-12 sm:py-16 lg:py-24 bg-gradient-to-br from-black via-gray-900 to-black text-white relative overflow-hidden">
         {/* Background Effects */}
         <div className="absolute inset-0">
           <div className="absolute top-0 left-1/4 w-96 h-96 bg-gradient-to-br from-umd-red/20 to-transparent rounded-full blur-3xl"></div>
@@ -634,25 +821,25 @@ const HomePage: React.FC = () => {
           <div className="mb-16">
             <div className="inline-flex items-center justify-center mb-6">
               <div className="w-4 h-4 bg-umd-gold rounded-full mr-4 animate-bounce"></div>
-              <h2 className="text-6xl md:text-7xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-gray-200 to-white">
+              <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-gray-200 to-white">
                 READY TO EXPLORE?
               </h2>
               <div className="w-4 h-4 bg-umd-red rounded-full ml-4 animate-bounce" style={{ animationDelay: '0.5s' }}></div>
             </div>
             <div className="w-48 h-2 bg-gradient-to-r from-umd-red via-umd-gold to-umd-red rounded-full mx-auto mb-8"></div>
-            <p className="text-2xl md:text-3xl text-gray-300 font-light max-w-4xl mx-auto leading-relaxed">
+            <p className="text-lg sm:text-xl md:text-2xl lg:text-3xl text-gray-300 font-light max-w-4xl mx-auto leading-relaxed">
               Take the next step in your professional journey with <span className="font-bold text-umd-gold">IFAD</span>
             </p>
           </div>
           
           {/* Enhanced Action Buttons */}
-          <div className="flex flex-col lg:flex-row gap-8 justify-center items-center">
+          <div className="flex flex-col sm:flex-row lg:flex-row gap-4 sm:gap-6 lg:gap-8 justify-center items-center">
             <div className="group relative">
               <div className="absolute -inset-1 bg-gradient-to-r from-umd-gold via-yellow-400 to-umd-gold rounded-2xl blur opacity-70 group-hover:opacity-100 transition duration-300"></div>
               <Button
                 size="lg"
                 variant="secondary"
-                className="relative px-16 py-8 text-2xl font-black bg-gradient-to-r from-umd-gold to-yellow-400 text-black hover:from-yellow-400 hover:to-umd-gold transform hover:scale-110 transition-all duration-300 rounded-2xl shadow-2xl"
+                className="relative px-8 sm:px-12 lg:px-16 py-4 sm:py-6 lg:py-8 text-lg sm:text-xl lg:text-2xl font-black bg-gradient-to-r from-umd-gold to-yellow-400 text-black hover:from-yellow-400 hover:to-umd-gold transform hover:scale-110 transition-all duration-300 rounded-2xl shadow-2xl"
               >
                 <a href="/public-hosts" target="_blank" rel="noopener noreferrer" className="flex items-center space-x-3">
                   <span>🔍</span>
@@ -668,7 +855,7 @@ const HomePage: React.FC = () => {
               <Button
                 size="lg"
                 variant="secondary"
-                className="relative px-16 py-8 text-2xl font-black bg-gradient-to-r from-umd-red to-red-400 text-white hover:from-red-400 hover:to-umd-red transform hover:scale-110 transition-all duration-300 rounded-2xl shadow-2xl"
+                className="relative px-8 sm:px-12 lg:px-16 py-4 sm:py-6 lg:py-8 text-lg sm:text-xl lg:text-2xl font-black bg-gradient-to-r from-umd-red to-red-400 text-white hover:from-red-400 hover:to-umd-red transform hover:scale-110 transition-all duration-300 rounded-2xl shadow-2xl"
               >
                 <a href="/register/student" target="_blank" rel="noopener noreferrer" className="flex items-center space-x-3">
                   <span>🚀</span>
@@ -687,56 +874,91 @@ const HomePage: React.FC = () => {
         </div>
       </section>
 
-      {/* Footer Section - Red Background */}
-      <section className="py-16 bg-umd-red text-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-12 text-center">
-            <div>
-              <h3 className="text-2xl font-bold mb-4">IFAD VIDEO</h3>
-              <div className="bg-white/10 rounded-lg p-8 h-48 flex items-center justify-center">
-                <p className="text-lg">Video Content</p>
+      {/* Footer Section - Additional Resources */}
+      <section className="py-12 sm:py-16 lg:py-20 bg-umd-red text-white relative overflow-hidden">
+        {/* Background decorative elements */}
+        <div className="absolute inset-0">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-bl from-white/5 to-transparent rounded-full -translate-y-32 translate-x-32"></div>
+          <div className="absolute bottom-0 left-0 w-48 h-48 bg-gradient-to-tr from-umd-gold/10 to-transparent rounded-full translate-y-24 -translate-x-24"></div>
+        </div>
+
+        <div className="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-12">
+            <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-black text-white mb-4">
+              More about IFAD
+            </h2>
+            <div className="w-32 h-1 bg-umd-gold rounded-full mx-auto mb-6"></div>
+            <p className="text-base sm:text-lg md:text-xl text-red-100 max-w-3xl mx-auto">
+              Get more information about the Intern for a Day (IFAD) program
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8">
+            
+            {/* Program Overview */}
+            <div className="group h-full">
+              <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 sm:p-8 border border-white/20 hover:border-white/40 transition-all duration-300 transform hover:scale-105 text-center h-full flex flex-col">
+                <div className="flex items-center justify-center mb-4">
+                  <Video className="text-white" size={40} />
+                </div>
+                <h3 className="text-xl sm:text-2xl font-bold mb-4 text-white">Program Overview</h3>
+                <p className="text-red-100 mb-6 leading-relaxed">
+                  Watch our comprehensive video to learn more about the IFAD experience and hear from past participants.
+                </p>
+                <div className="bg-white/5 rounded-xl overflow-hidden border border-white/20 mt-auto">
+                  <video 
+                    controls 
+                    className="w-full h-auto max-h-48 sm:max-h-56 md:max-h-64 object-cover"
+                    poster=""
+                    preload="metadata"
+                    playsInline
+                    controlsList="nodownload"
+                  >
+                    <source src="/videos/20250729_102029 - Tracy Owusu.mp4" type="video/mp4" />
+                    Your browser does not support the video tag.
+                  </video>
+                </div>
               </div>
             </div>
-            
-            <div>
-              <h3 className="text-2xl font-bold mb-4">IFAD FEEDBACK</h3>
-              <div className="bg-white/10 rounded-lg p-8 h-48 flex items-center justify-center">
-                <p className="text-lg">Feedback System</p>
-              </div>
-            </div>
-            
-            <div>
-              <h3 className="text-2xl font-bold mb-4">IFAD MEDIA GALLERY</h3>
-              <div className="bg-white/10 rounded-lg p-4 flex items-center justify-center">
-                {/* Image Gallery - 4:5 Aspect Ratio */}
-                <div className="relative w-full max-w-xs mx-auto" style={{ aspectRatio: '4/5' }}>
-                  <img 
-                    src={galleryImages[currentImageIndex].src} 
-                    alt={galleryImages[currentImageIndex].alt}
-                    className="w-full h-full object-cover rounded-lg shadow-lg"
-                  />
-                  <div className="absolute bottom-3 left-1/2 transform -translate-x-1/2 flex space-x-2">
-                    {galleryImages.map((_, index) => (
-                      <button
-                        key={index}
-                        onClick={() => setCurrentImageIndex(index)}
-                        className={`w-3 h-3 rounded-full transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-umd-gold ${
-                          index === currentImageIndex ? 'bg-white shadow-lg scale-125' : 'bg-white/50 hover:bg-white/75'
-                        }`}
-                        aria-label={`View image ${index + 1} of ${galleryImages.length}: ${galleryImages[index].caption}`}
-                        aria-pressed={index === currentImageIndex}
-                      />
-                    ))}
-                  </div>
-                  {/* Caption overlay */}
-                  <div className="absolute bottom-8 left-0 right-0 bg-black/50 backdrop-blur-sm text-white text-sm py-2 px-3 rounded-b-lg">
-                    <p className="font-medium text-center">{galleryImages[currentImageIndex].caption}</p>
+
+            {/* Testimonials Section */}
+            <div className="group h-full">
+              <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-8 border border-white/20 hover:border-white/40 transition-all duration-300 transform hover:scale-105 h-full flex flex-col">
+                <div className="flex items-center justify-center mb-4">
+                  <MessageSquareQuote className="text-white" size={40} />
+                </div>
+                <h3 className="text-xl sm:text-2xl font-bold mb-4 text-white text-center">Testimonials</h3>
+                
+                {/* Rotating Testimonials (gallery-like, single card) */}
+                <div className="bg-white rounded-xl p-6 border border-white/30 relative shadow-lg overflow-hidden mx-auto max-w-2xl flex-1 flex items-center justify-center">
+                  <div className={`transition-opacity duration-500 ${isTransitioning ? 'opacity-0' : 'opacity-100'}`}>
+                    {(() => {
+                      const item = feedbackQuotes[currentImageIndex % feedbackQuotes.length];
+                      return (
+                        <figure>
+                          <blockquote className="text-gray-800 leading-relaxed italic text-center">{`“${item.text}”`}</blockquote>
+                          <figcaption className="mt-4 text-center text-sm"><span className="font-bold text-gray-900">{item.source}</span></figcaption>
+                        </figure>
+                      );
+                    })()}
                   </div>
                 </div>
               </div>
             </div>
+
           </div>
-          
+
+          {/* Contact Information */}
+          <div className="mt-16 text-center">
+            <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 sm:p-8 border border-white/20">
+              <h3 className="text-xl sm:text-2xl font-bold mb-4 text-white">Questions?</h3>
+              <p className="text-red-100 text-base sm:text-lg">
+                For more information about the IFAD program, contact us at <a href="mailto:ifad@umd.edu" className="text-umd-gold hover:text-yellow-300 transition-colors duration-300 underline">
+                  ifad@umd.edu
+                </a>
+              </p>
+            </div>
+          </div>
         </div>
       </section>
     </div>

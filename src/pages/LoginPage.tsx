@@ -21,21 +21,31 @@ const LoginPage: React.FC = () => {
 
   const [userType, setUserType] = useState(searchParams.get('type') || 'student');
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!formData.email || !formData.password) {
+      setError('Please enter both email and password');
+      return;
+    }
+
     setIsLoading(true);
+    setError('');
 
     try {
-      // Use demo credentials based on user type
-      const demoEmail = userType === 'admin' ? 'admin@umd.edu' : 
-                       userType === 'host' ? 'host@example.com' : 'student@umd.edu';
-      await login(demoEmail, 'password');
-      
-      // Redirect based on user type
-      const redirectPath = userType === 'admin' ? '/admin' : 
-                          userType === 'host' ? '/host' : '/student';
-      navigate(redirectPath);
-    } catch {
-      setError('Login failed');
+      console.log('[login] submitting');
+      const u = await login(formData.email, formData.password);
+      console.log('[login] result user:', u);
+      // Redirect immediately based on role to avoid bounce
+      if (u) {
+        const dashboardPath = u.role === 'admin' ? '/admin' : u.role === 'host' ? '/host' : '/student';
+        console.log('[login] navigating to', dashboardPath);
+        navigate(dashboardPath, { replace: true });
+        return;
+      }
+    } catch (error) {
+      console.error('[login] error', error);
+      setError(error instanceof Error ? error.message : 'Login failed');
     } finally {
       setIsLoading(false);
     }
@@ -107,14 +117,63 @@ const LoginPage: React.FC = () => {
         </div>
 
         <Card>
-          <Button
-            onClick={handleSubmit}
-            className="w-full transform hover:scale-105 transition-all duration-300 shadow-lg hover:shadow-xl"
-            size="lg"
-            loading={isLoading}
-          >
-            Login/Continue
-          </Button>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {error && (
+              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+                {error}
+              </div>
+            )}
+            
+            <div>
+              <label htmlFor="email" className="block text-sm font-medium text-umd-gray-700 mb-2">
+                Email Address
+              </label>
+              <input
+                type="email"
+                id="email"
+                name="email"
+                value={formData.email}
+                onChange={handleChange}
+                className="w-full px-3 py-2 border border-umd-gray-300 rounded-lg focus:ring-2 focus:ring-umd-red focus:border-umd-red"
+                placeholder="your.email@example.com"
+                required
+              />
+            </div>
+            
+            <div>
+              <label htmlFor="password" className="block text-sm font-medium text-umd-gray-700 mb-2">
+                Password
+              </label>
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  id="password"
+                  name="password"
+                  value={formData.password}
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 border border-umd-gray-300 rounded-lg focus:ring-2 focus:ring-umd-red focus:border-umd-red pr-10"
+                  placeholder="Enter your password"
+                  required
+                />
+                <button
+                  type="button"
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                  onClick={() => setShowPassword(!showPassword)}
+                >
+                  {showPassword ? '👁️' : '👁️‍🗨️'}
+                </button>
+              </div>
+            </div>
+            
+            <Button
+              type="submit"
+              className="w-full transform hover:scale-105 transition-all duration-300 shadow-lg hover:shadow-xl"
+              size="lg"
+              loading={isLoading}
+            >
+              Sign In
+            </Button>
+          </form>
 
             {/* Registration Section */}
             <div className="space-y-4">
@@ -165,14 +224,13 @@ const LoginPage: React.FC = () => {
           </Link>
         </div>
 
-        {/* Demo credentials info */}
-        <Card className="bg-blue-50 border-blue-200">
+        {/* Help text */}
+        <Card className="bg-umd-gray-50 border-umd-gray-200">
           <div className="text-center">
-            <h3 className="text-sm font-medium text-blue-800 mb-2">Demo Credentials</h3>
-            <div className="text-xs text-blue-600 space-y-1">
-              <p><strong>Student:</strong> student@umd.edu / password</p>
-              <p><strong>Host:</strong> host@example.com / password</p>
-              <p><strong>Admin:</strong> admin@umd.edu / password</p>
+            <h3 className="text-sm font-medium text-umd-gray-700 mb-2">Need Help?</h3>
+            <div className="text-xs text-umd-gray-600 space-y-1">
+              <p>Use your University of Maryland credentials to sign in.</p>
+              <p>Contact IT support if you're having trouble accessing your account.</p>
             </div>
           </div>
         </Card>

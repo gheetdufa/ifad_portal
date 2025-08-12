@@ -1,7 +1,8 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 import { v4 as uuidv4 } from 'uuid';
-
-const { response, db, auth, validate, transform } = require('/opt/nodejs/utils');
+let utils;
+try { utils = require('/opt/nodejs/utils'); } catch { utils = require('../../layers/shared/nodejs/utils'); }
+const { response, db, auth, validate, transform } = utils;
 
 const TABLE_NAME = process.env.TABLE_NAME!;
 

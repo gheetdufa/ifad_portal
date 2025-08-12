@@ -1,34 +1,31 @@
 import React, { useState, useCallback, useMemo } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { Briefcase, Save, CheckCircle, Building, User, Mail, Phone, Globe, Award, Target, MapPin, Search, X } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Briefcase, Save, CheckCircle, Building, User, Mail, Phone, Globe, Target, MapPin, Search, X } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
-import { PREFERRED_PREFIXES, CAREER_FIELDS, AVAILABLE_DAYS, IDENTITY_OPTIONS } from '../../types';
-import { searchCompanies, inferWebsiteFromCompany, getIndustryFromCompany, getCompanyLogo, CompanyInfo, searchLocations } from '../../utils/companyData';
+import { PREFERRED_PREFIXES, CAREER_FIELDS, IDENTITY_OPTIONS } from '../../types';
+import { searchCompanies, inferWebsiteFromCompany, getCompanyLogo, CompanyInfo, searchLocations } from '../../utils/companyData';
 import SmallerLogo from '../../assets/Smaller_logo.png';
 
 const HostRegistration: React.FC = () => {
-  const navigate = useNavigate();
   const { register } = useAuth();
 
   const [formData, setFormData] = useState({
-    // Personal Information - no prefilled values
+    // Personal Information
     preferredPrefix: '',
     firstName: '',
     lastName: '',
     workEmail: '',
+    password: '',
+    confirmPassword: '',
     preferredPhone: '',
     
-    // Previous Experience - no prefilled values
-    previousHostExperience: false,
+    // About You section
+    aboutYou: '',
     
-    // UMD Affiliation - no prefilled values
-    isUmdParent: false,
-    isUmdAlumni: false,
-    
-    // Work Information - no prefilled values
+    // Work Information  
     organization: '',
     jobTitle: '',
     companyWebsite: '',
@@ -36,40 +33,49 @@ const HostRegistration: React.FC = () => {
     cityState: '',
     zipCode: '',
     
-    // Career Fields - no prefilled values
+    // About Your Work
+    aboutWork: '',
+    
+    // Career Fields
     careerFields: [] as string[],
     careerFieldsOther: '',
     
-    // Opportunity Type - no prefilled values
-    opportunityType: '' as 'in-person' | 'virtual' | '',
-    
-    // Work Location & Accessibility - no prefilled values
+    // DC Metro Accessible
     isDcMetroAccessible: undefined as boolean | undefined,
     workLocationAccessibilityUnsure: false,
-    isPhysicalOffice: false,
+    
+    // Federal Agency
     isFederalAgency: false,
     
-    // Requirements - no prefilled values
+    // Requirements
     requiresCitizenship: false,
     requiresBackgroundCheck: false,
     
-    // Organization Description - no prefilled values
+    // Organization & Experience Description
     organizationDescription: '',
     experienceDescription: '',
     
-    // Capacity & Availability - minimal default
-    maxStudents: 1,
-    availableDays: [] as string[],
-    availableWinterSession: false,
-    additionalInfo: '',
+    // Previous Experience
+    previousHostExperience: false,
     
-    // Recruitment Interest - no prefilled values
-    interestedInRecruitment: false,
+    // Opportunity Type
+    opportunityType: '' as 'in-person' | 'virtual' | '',
+    isPhysicalOffice: false,
     
-    // Optional Identities - no prefilled values
+    // UMD Affiliation
+    isUmdParent: false,
+    isUmdAlumni: false,
+    umdColleges: [] as string[],
+    umdCollegesOther: '',
+    participatedLivingLearning: false,
+    
+    // Identities
     sharedIdentities: [] as string[],
     customReligion: '',
     customOther: '',
+    
+    // Additional Info
+    additionalInfo: '',
   });
 
   // Company autocomplete state
@@ -77,7 +83,6 @@ const HostRegistration: React.FC = () => {
   const [showCompanySuggestions, setShowCompanySuggestions] = useState(false);
   const [locationQuery, setLocationQuery] = useState('');
   const [showLocationSuggestions, setShowLocationSuggestions] = useState(false);
-  const [currentSection, setCurrentSection] = useState(0);
   
   // Memoized search results
   const companySuggestions = useMemo(() => {
@@ -199,13 +204,16 @@ const HostRegistration: React.FC = () => {
       firstName: 'First name',
       lastName: 'Last name', 
       workEmail: 'Work email',
+      password: 'Password',
+      confirmPassword: 'Confirm password',
       preferredPhone: 'Phone number',
+      aboutYou: 'About you',
       organization: 'Organization',
       jobTitle: 'Job title',
       companyAddress: 'Company address',
       cityState: 'City/State',
       zipCode: 'ZIP code',
-      opportunityType: 'Opportunity type',
+      aboutWork: 'About your work',
       organizationDescription: 'Organization description',
       experienceDescription: 'Experience description'
     };
@@ -216,16 +224,29 @@ const HostRegistration: React.FC = () => {
       }
     }
 
+    // Password validation
+    if (formData.password && formData.password.length < 8) {
+      errors.password = 'Password must be at least 8 characters long';
+    }
+
+    if (formData.password && !/(?=.*[a-z])/.test(formData.password)) {
+      errors.password = 'Password must contain at least one lowercase letter';
+    }
+
+    if (formData.password && !/(?=.*[A-Z])/.test(formData.password)) {
+      errors.password = 'Password must contain at least one uppercase letter';
+    }
+
+    if (formData.password && !/(?=.*\d)/.test(formData.password)) {
+      errors.password = 'Password must contain at least one number';
+    }
+
+    if (formData.password !== formData.confirmPassword) {
+      errors.confirmPassword = 'Passwords do not match';
+    }
+
     if (formData.careerFields.length === 0) {
       errors.careerFields = 'Please select at least one career field';
-    }
-
-    if (formData.availableDays.length === 0) {
-      errors.availableDays = 'Please select at least one available day';
-    }
-
-    if (formData.opportunityType === 'in-person' && formData.isDcMetroAccessible === undefined && !formData.workLocationAccessibilityUnsure) {
-      errors.isDcMetroAccessible = 'Please indicate if your work location is DC metro accessible';
     }
 
     setValidationErrors(errors);
@@ -252,7 +273,7 @@ const HostRegistration: React.FC = () => {
       // Prepare registration data
       const registrationData = {
         email: formData.workEmail,
-        password: 'TempPassword123!', // Will be reset via email
+        password: formData.password,
         firstName: formData.firstName,
         lastName: formData.lastName,
         role: 'host',
@@ -261,6 +282,12 @@ const HostRegistration: React.FC = () => {
         preferredPrefix: formData.preferredPrefix || undefined,
         workEmail: formData.workEmail,
         preferredPhone: formData.preferredPhone,
+        // Map to backend-expected fields
+        workPhone: formData.preferredPhone,
+        workLocation:
+          formData.opportunityType === 'in-person'
+            ? `${formData.companyAddress}${formData.cityState ? ', ' + formData.cityState : ''}${formData.zipCode ? ' ' + formData.zipCode : ''}`
+            : 'virtual',
         previousHostExperience: formData.previousHostExperience,
         isUmdParent: formData.isUmdParent,
         isUmdAlumni: formData.isUmdAlumni,
@@ -281,11 +308,7 @@ const HostRegistration: React.FC = () => {
         requiresBackgroundCheck: formData.requiresBackgroundCheck,
         organizationDescription: formData.organizationDescription,
         experienceDescription: formData.experienceDescription,
-        maxStudents: formData.maxStudents,
-        availableDays: formData.availableDays,
-        availableWinterSession: formData.availableWinterSession,
         additionalInfo: formData.additionalInfo || undefined,
-        interestedInRecruitment: formData.interestedInRecruitment,
         sharedIdentities: formData.sharedIdentities,
         customIdentities: {
           ...(formData.customReligion && { religion: formData.customReligion }),
@@ -300,6 +323,11 @@ const HostRegistration: React.FC = () => {
         verified: false,
       };
 
+      const redacted = { ...registrationData, password: registrationData.password ? '***' : undefined };
+      console.log('[host-form] submitting registration', {
+        apiUrl: import.meta.env.VITE_API_URL,
+        body: redacted
+      });
       await register(registrationData);
       setIsSubmitted(true);
     } catch (err: any) {
@@ -311,36 +339,29 @@ const HostRegistration: React.FC = () => {
     }
   };
 
-  // Form sections for progress tracking
-  const formSections = [
-    'Personal Information',
-    'Work Information', 
-    'Career Fields & Opportunity',
-    'Organization Details',
-    'Availability & Preferences',
-    'Additional Information'
-  ];
 
   // Calculate form completion percentage
   const getFormProgress = () => {
-    const totalFields = 20; // Approximate number of important fields
+    const totalFields = 17; // Updated number including password fields
     let filledFields = 0;
     
     if (formData.firstName) filledFields++;
     if (formData.lastName) filledFields++;
     if (formData.workEmail) filledFields++;
+    if (formData.password) filledFields++;
+    if (formData.confirmPassword) filledFields++;
     if (formData.preferredPhone) filledFields++;
+    if (formData.aboutYou) filledFields++;
     if (formData.organization) filledFields++;
     if (formData.jobTitle) filledFields++;
     if (formData.companyAddress) filledFields++;
     if (formData.cityState) filledFields++;
     if (formData.zipCode) filledFields++;
-    if (formData.opportunityType) filledFields++;
+    if (formData.aboutWork) filledFields++;
     if (formData.careerFields.length > 0) filledFields++;
     if (formData.organizationDescription) filledFields++;
     if (formData.experienceDescription) filledFields++;
-    if (formData.availableDays.length > 0) filledFields++;
-    if (formData.maxStudents > 0) filledFields++;
+    if (formData.isDcMetroAccessible !== undefined || formData.workLocationAccessibilityUnsure) filledFields++;
     
     return Math.round((filledFields / totalFields) * 100);
   };
@@ -382,11 +403,13 @@ const HostRegistration: React.FC = () => {
               <Briefcase className="w-10 h-10 text-white" />
             </div>
             <h1 className="text-4xl md:text-5xl font-bold text-umd-black">
-              Host Registration
+              Create your IFAD host profile!
             </h1>
           </div>
-          <p className="text-xl text-umd-gray-600 max-w-3xl mx-auto leading-relaxed">
-            Register to become a host for the Intern for a Day program and help UMD students explore career opportunities
+          <p className="text-lg text-umd-gray-600 max-w-4xl mx-auto leading-relaxed">
+            Intern for a Day, through the University of Maryland University Career Center & The President's Promise, 
+            connects current undergraduate UMD students with alumni, parents, and employers for short-term job shadowing 
+            opportunities or virtual informational interviews to explore potential career fields.
           </p>
         </div>
 
@@ -444,12 +467,9 @@ const HostRegistration: React.FC = () => {
               )}
             </section>
 
-            {/* About You */}
+            {/* Basic Info */}
             <section>
-              <h2 className="text-2xl font-bold text-umd-black mb-6 flex items-center space-x-2">
-                <User className="w-6 h-6 text-umd-red" />
-                <span>About You</span>
-              </h2>
+              <h2 className="text-2xl font-bold text-umd-black mb-6">Basic Information</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -504,6 +524,43 @@ const HostRegistration: React.FC = () => {
                 </div>
 
                 <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Password *
+                  </label>
+                  <Input
+                    type="password"
+                    placeholder="Enter a secure password"
+                    value={formData.password}
+                    onChange={(e) => handleInputChange('password', e.target.value)}
+                    className={validationErrors.password ? 'border-red-500 focus:border-red-500' : ''}
+                    required
+                  />
+                  {validationErrors.password && (
+                    <p className="text-red-500 text-xs mt-1">{validationErrors.password}</p>
+                  )}
+                  <p className="text-xs text-gray-500 mt-1">
+                    Must be at least 8 characters with uppercase, lowercase, and number
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Confirm Password *
+                  </label>
+                  <Input
+                    type="password"
+                    placeholder="Confirm your password"
+                    value={formData.confirmPassword}
+                    onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
+                    className={validationErrors.confirmPassword ? 'border-red-500 focus:border-red-500' : ''}
+                    required
+                  />
+                  {validationErrors.confirmPassword && (
+                    <p className="text-red-500 text-xs mt-1">{validationErrors.confirmPassword}</p>
+                  )}
+                </div>
+
+                <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center space-x-1">
                     <Phone className="w-4 h-4 text-gray-500" />
                     <span>Preferred Phone Number *</span>
@@ -520,6 +577,31 @@ const HostRegistration: React.FC = () => {
                     <p className="text-red-500 text-xs mt-1">{validationErrors.preferredPhone}</p>
                   )}
                 </div>
+              </div>
+            </section>
+
+            {/* About You */}
+            <section>
+              <h2 className="text-2xl font-bold text-umd-black mb-6">About You</h2>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Tell us about yourself *
+                </label>
+                <textarea
+                  placeholder="Please describe yourself, your background, interests, etc..."
+                  value={formData.aboutYou}
+                  onChange={(e) => handleInputChange('aboutYou', e.target.value)}
+                  required
+                  rows={4}
+                  className={`w-full px-4 py-3 border-2 rounded-lg focus:outline-none focus:ring-2 transition-all duration-200 resize-none ${
+                    validationErrors.aboutYou 
+                      ? 'border-red-500 focus:border-red-500 focus:ring-red-200' 
+                      : 'border-gray-200 focus:ring-blue-500 focus:border-blue-500'
+                  }`}
+                />
+                {validationErrors.aboutYou && (
+                  <p className="text-red-500 text-xs mt-1">{validationErrors.aboutYou}</p>
+                )}
               </div>
             </section>
 
@@ -613,9 +695,34 @@ const HostRegistration: React.FC = () => {
 
             {/* About Your Work */}
             <section>
+              <h2 className="text-2xl font-bold text-umd-black mb-6">About Your Work</h2>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Tell us about your work *
+                </label>
+                <textarea
+                  placeholder="Please describe your job, responsibilities, industry, etc..."
+                  value={formData.aboutWork}
+                  onChange={(e) => handleInputChange('aboutWork', e.target.value)}
+                  required
+                  rows={4}
+                  className={`w-full px-4 py-3 border-2 rounded-lg focus:outline-none focus:ring-2 transition-all duration-200 resize-none ${
+                    validationErrors.aboutWork 
+                      ? 'border-red-500 focus:border-red-500 focus:ring-red-200' 
+                      : 'border-gray-200 focus:ring-blue-500 focus:border-blue-500'
+                  }`}
+                />
+                {validationErrors.aboutWork && (
+                  <p className="text-red-500 text-xs mt-1">{validationErrors.aboutWork}</p>
+                )}
+              </div>
+            </section>
+
+            {/* Work Information */}
+            <section>
               <h2 className="text-2xl font-bold text-umd-black mb-6 flex items-center space-x-2">
                 <Building className="w-6 h-6 text-umd-red" />
-                <span>About Your Work</span>
+                <span>Work Information</span>
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="relative">
@@ -1178,130 +1285,7 @@ const HostRegistration: React.FC = () => {
               </div>
             </section>
 
-            {/* Capacity & Availability */}
-            <section>
-              <h2 className="text-2xl font-bold text-umd-black mb-6">Capacity & Availability</h2>
-              <div className="space-y-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    How many students are you willing to host this fall semester (late-October 2025 through mid-January 2026)? *
-                  </label>
-                  <p className="text-xs text-gray-500 mb-2">
-                    If more than one student, we ask that you host students on separate days.
-                  </p>
-                  <div className="flex items-center space-x-4">
-                    <select
-                      value={formData.maxStudents}
-                      onChange={(e) => handleInputChange('maxStudents', parseInt(e.target.value))}
-                      className="px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      required
-                    >
-                      {Array.from({ length: 10 }, (_, i) => i + 1).map(num => (
-                        <option key={num} value={num}>{num}</option>
-                      ))}
-                    </select>
-                    <span>student(s)</span>
-                  </div>
-                </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    What days of the week would work best with your schedule for a student to shadow you? *
-                  </label>
-                  <p className="text-xs text-gray-500 mb-2">(Please select all that apply.)</p>
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                    {AVAILABLE_DAYS.map((day) => (
-                      <label key={day} className="flex items-center space-x-2 p-3 bg-gray-50 rounded-lg hover:bg-blue-50 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={formData.availableDays.includes(day)}
-                          onChange={() => handleMultiSelect('availableDays', day)}
-                          className="w-4 h-4 text-blue-600"
-                        />
-                        <span className="text-sm">{day}</span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-
-                <div>
-                  <p className="text-gray-700 font-medium mb-3">
-                    UMD holds a Winter Session from January 5–23, 2026. Many local students like to conduct their 
-                    shadowing experience during this time. Would a shadowing day sometime in this range work with your schedule?
-                  </p>
-                  <div className="flex space-x-6">
-                    <label className="flex items-center space-x-2">
-                      <input
-                        type="radio"
-                        name="availableWinterSession"
-                        checked={formData.availableWinterSession === true}
-                        onChange={() => handleInputChange('availableWinterSession', true)}
-                        className="w-4 h-4 text-blue-600"
-                      />
-                      <span>Yes</span>
-                    </label>
-                    <label className="flex items-center space-x-2">
-                      <input
-                        type="radio"
-                        name="availableWinterSession"
-                        checked={formData.availableWinterSession === false}
-                        onChange={() => handleInputChange('availableWinterSession', false)}
-                        className="w-4 h-4 text-blue-600"
-                      />
-                      <span>No</span>
-                    </label>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Is there any more information you would like to share?
-                  </label>
-                  <textarea
-                    placeholder="Any additional information, special requirements, or details you'd like to share..."
-                    value={formData.additionalInfo}
-                    onChange={(e) => handleInputChange('additionalInfo', e.target.value)}
-                    rows={3}
-                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
-              </div>
-            </section>
-
-            {/* Recruitment Interest */}
-            <section>
-              <h2 className="text-2xl font-bold text-umd-black mb-6">Recruitment Interest</h2>
-              <div>
-                <p className="text-gray-700 font-medium mb-3">
-                  Are you interested in learning more about how to recruit UMD students for jobs and internships within your organization?
-                </p>
-                <p className="text-xs text-gray-500 mb-3">
-                  (If "yes", a member of our Employer Relations team will contact you via email/phone.)
-                </p>
-                <div className="flex space-x-6">
-                  <label className="flex items-center space-x-2">
-                    <input
-                      type="radio"
-                      name="interestedInRecruitment"
-                      checked={formData.interestedInRecruitment === true}
-                      onChange={() => handleInputChange('interestedInRecruitment', true)}
-                      className="w-4 h-4 text-blue-600"
-                    />
-                    <span>Yes</span>
-                  </label>
-                  <label className="flex items-center space-x-2">
-                    <input
-                      type="radio"
-                      name="interestedInRecruitment"  
-                      checked={formData.interestedInRecruitment === false}
-                      onChange={() => handleInputChange('interestedInRecruitment', false)}
-                      className="w-4 h-4 text-blue-600"
-                    />
-                    <span>No</span>
-                  </label>
-                </div>
-              </div>
-            </section>
 
             {/* Identities You Choose to Share */}
             <section>
@@ -1310,7 +1294,10 @@ const HostRegistration: React.FC = () => {
                 Please select any identities that you hold and would like to share with UMD students.
               </p>
               <p className="text-xs text-gray-500 mb-4">
-                (Optional and not required. This is the final question before submission.)
+                Please note: 1) It is not required to answer this question and 2) This is the final question of the registration form and clicking on the arrow to advance the form will submit your registration.
+              </p>
+              <p className="text-sm text-gray-600 mb-4">
+                Why this question? We would like to create more identity-based career programming for students to connect with professionals that hold identities that are similar and important to them (ex: group informational interviews for students to connect with Black women in public policy).
               </p>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                 {IDENTITY_OPTIONS.map((identity) => (

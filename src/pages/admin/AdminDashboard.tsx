@@ -9,6 +9,7 @@ import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import Badge from '../../components/ui/Badge';
 import AwsStatusChecker from '../../components/admin/AwsStatusChecker';
+import AdminNotifications from '../../components/admin/AdminNotifications';
 import { apiService, DashboardStats, RecentActivity } from '../../services/api';
 
 const AdminDashboard: React.FC = () => {
@@ -30,7 +31,7 @@ const AdminDashboard: React.FC = () => {
       setError(null);
 
       const [statsResponse, activityResponse] = await Promise.all([
-        apiService.getDashboardStats(),
+        apiService.getAdminStats(),
         apiService.getRecentActivity()
       ]);
 
@@ -209,37 +210,40 @@ const AdminDashboard: React.FC = () => {
   const getQuickStats = () => {
     if (!dashboardStats) return [];
     
-    const completionRate = dashboardStats.totalMatches > 0 
-      ? Math.round((dashboardStats.completedExperiences / dashboardStats.totalMatches) * 100)
-      : 0;
+    // Use safe property access with fallbacks to match our backend response
+    const totalHosts = dashboardStats.totalHosts || 0;
+    const pendingHosts = dashboardStats.pendingHosts || 0;
+    const approvedHosts = dashboardStats.approvedHosts || 0;
+    const totalStudents = dashboardStats.totalStudents || 0;
+    const totalApplications = dashboardStats.totalApplications || 0;
 
     return [
       { 
         label: 'Total Hosts', 
-        value: dashboardStats.totalHosts.toString(), 
-        change: dashboardStats.totalHosts > 0 ? 'Active' : 'No hosts yet', 
+        value: totalHosts.toString(), 
+        change: totalHosts > 0 ? 'Registered' : 'No hosts yet', 
         icon: Users,
         color: 'text-blue-600',
       },
       { 
-        label: 'Applications', 
-        value: dashboardStats.submittedApplications.toString(), 
-        change: dashboardStats.submittedApplications > 0 ? 'Submitted' : 'No applications yet', 
-        icon: FileText,
+        label: 'Pending Review', 
+        value: pendingHosts.toString(), 
+        change: pendingHosts > 0 ? 'Need attention' : 'All reviewed', 
+        icon: Clock,
+        color: 'text-orange-600',
+      },
+      { 
+        label: 'Approved Hosts', 
+        value: approvedHosts.toString(), 
+        change: approvedHosts > 0 ? 'Ready to host' : 'None approved yet', 
+        icon: CheckCircle,
         color: 'text-green-600',
       },
       { 
-        label: 'Matches Made', 
-        value: dashboardStats.totalMatches.toString(), 
-        change: dashboardStats.totalMatches > 0 ? 'Created' : 'No matches yet', 
-        icon: UserCheck,
-        color: 'text-purple-600',
-      },
-      { 
-        label: 'Completion Rate', 
-        value: `${completionRate}%`, 
-        change: dashboardStats.completedExperiences > 0 ? 'Completed' : 'In progress', 
-        icon: TrendingUp,
+        label: 'Students', 
+        value: totalStudents.toString(), 
+        change: totalStudents > 0 ? 'Registered' : 'No students yet', 
+        icon: Target,
         color: 'text-umd-red',
       },
     ];
@@ -281,6 +285,7 @@ const AdminDashboard: React.FC = () => {
             <h1 className="text-3xl font-bold text-umd-black">Admin Dashboard</h1>
           </div>
           <div className="flex items-center space-x-2">
+            <AdminNotifications />
             {lastRefresh && (
               <span className="text-sm text-umd-gray-500">
                 Last updated: {lastRefresh.toLocaleTimeString()}
@@ -534,7 +539,7 @@ const AdminDashboard: React.FC = () => {
                 <Link to="/admin/hosts">Manage Hosts</Link>
               </Button>
               <Button variant="outline" icon={FileText} className="w-full justify-start">
-                <Link to="/admin/students">Student Applications</Link>
+                <Link to="/admin/applications">Student Applications</Link>
               </Button>
               <Button variant="outline" icon={UserCheck} className="w-full justify-start">
                 <Link to="/admin/matching">Run Matching</Link>

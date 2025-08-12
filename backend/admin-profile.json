@@ -1,0 +1,16 @@
+﻿{
+  "PK": {"S": "USER#94d82448-30d1-709a-036c-f63d26dfbdd9"},
+  "SK": {"S": "PROFILE"},
+  "GSI1PK": {"S": "EMAIL#gudadheer@gmail.com"},
+  "GSI1SK": {"S": "USER#94d82448-30d1-709a-036c-f63d26dfbdd9"},
+  "GSI2PK": {"S": "ROLE#admin"},
+  "GSI2SK": {"S": "USER#94d82448-30d1-709a-036c-f63d26dfbdd9"},
+  "userId": {"S": "94d82448-30d1-709a-036c-f63d26dfbdd9"},
+  "email": {"S": "gudadheer@gmail.com"},
+  "firstName": {"S": "Dheer"},
+  "lastName": {"S": "Guda"},
+  "role": {"S": "admin"},
+  "verified": {"BOOL": true},
+  "createdAt": {"S": "2025-08-10T13:33:42Z"},
+  "updatedAt": {"S": "2025-08-10T13:33:42Z"}
+}

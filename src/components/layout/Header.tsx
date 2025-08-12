@@ -32,60 +32,56 @@ const Header: React.FC = () => {
 
   return (
     <header className="bg-white shadow-sm border-b border-umd-gray-200" role="banner">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16">
+      <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-6">
+        <div className="flex justify-between items-center h-16 md:h-24">
           {/* Logo */}
-          <Link to="/" className="flex items-center space-x-3 focus:outline-none focus:ring-4 focus:ring-umd-red/50 rounded-lg" aria-label="Go to homepage">
+          <Link to="/" className="flex items-center space-x-3 md:space-x-4 focus:outline-none focus:ring-4 focus:ring-umd-red/50 rounded-lg" aria-label="Go to homepage">
             <img 
               src={SmallerLogo} 
               alt="University of Maryland Logo" 
-              className="h-14 w-auto"
+              className="h-14 md:h-16 lg:h-20 w-auto"
             />
           </Link>
           
-          {/* Centered Title */}
-          <div className="absolute left-1/2 transform -translate-x-1/2">
-            <h1 className="text-xl font-bold text-umd-black">Intern for a Day</h1>
-          </div>
 
-          {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center space-x-6" role="navigation" aria-label="Main navigation">
-            {navigation.map((item) => {
-              const Icon = item.icon;
-              return (
-                <Link
-                  key={item.name}
-                  to={item.href}
-                  className={`flex items-center space-x-1 px-3 py-2 text-sm font-medium rounded-md transition-colors focus:outline-none focus:ring-4 focus:ring-umd-red/50 ${
-                    location.pathname === item.href
-                      ? 'text-umd-red bg-umd-red/5'
-                      : 'text-umd-gray-700 hover:text-umd-red hover:bg-umd-gray-50'
-                  }`}
-                  aria-current={location.pathname === item.href ? 'page' : undefined}
-                >
-                  <Icon size={16} />
-                  <span>{item.name}</span>
-                </Link>
-              );
-            })}
-          </nav>
+          {/* Desktop spacer */}
+          <div className="hidden md:block"></div>
 
           {/* User Menu */}
           <div className="flex items-center space-x-4">
             {user ? (
               <div className="flex items-center space-x-3">
+                {/* Dashboard Button */}
+                {navigation.map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <Link
+                      key={item.name}
+                      to={item.href}
+                      className={`hidden md:flex items-center space-x-2 px-4 py-2 text-base lg:text-lg font-semibold rounded-md transition-colors focus:outline-none focus:ring-4 focus:ring-umd-red/50 ${
+                        location.pathname === item.href
+                          ? 'text-umd-red bg-umd-red/5'
+                          : 'text-umd-gray-700 hover:text-umd-red hover:bg-umd-gray-50'
+                      }`}
+                      aria-current={location.pathname === item.href ? 'page' : undefined}
+                    >
+                      <Icon size={20} />
+                      <span>{item.name}</span>
+                    </Link>
+                  );
+                })}
                 <div className="hidden sm:block text-right">
-                  <p className="text-sm font-medium text-umd-gray-900">
+                  <p className="text-base lg:text-lg font-semibold text-umd-gray-900">
                     {user.firstName} {user.lastName}
                   </p>
-                  <p className="text-xs text-umd-gray-500 capitalize">{user.role}</p>
+                  <p className="text-sm text-umd-gray-500 capitalize">{user.role}</p>
                 </div>
                 <Button
                   variant="ghost"
-                  size="sm"
+                  size="md"
                   icon={LogOut}
                   onClick={handleLogout}
-                  className="text-umd-gray-600"
+                  className="text-umd-gray-600 lg:text-lg"
                 >
                   <span className="hidden sm:inline">Logout</span>
                 </Button>
@@ -95,21 +91,21 @@ const Header: React.FC = () => {
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="text-umd-gray-700 hover:text-umd-red focus:outline-none focus:ring-4 focus:ring-umd-red/50"
+                  className="text-umd-gray-700 hover:text-umd-red focus:outline-none focus:ring-4 focus:ring-umd-red/50 md:text-base"
                 >
                   <Link to="/login" className="block w-full" aria-label="Login to your account">Login</Link>
                 </Button>
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="text-umd-gray-700 hover:text-umd-red focus:outline-none focus:ring-4 focus:ring-umd-red/50"
+                  className="text-umd-gray-700 hover:text-umd-red focus:outline-none focus:ring-4 focus:ring-umd-red/50 md:text-base"
                 >
                   <Link to="/register/student" className="block w-full" aria-label="Register as a student">Student</Link>
                 </Button>
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="text-umd-gray-700 hover:text-umd-red focus:outline-none focus:ring-4 focus:ring-umd-red/50"
+                  className="text-umd-gray-700 hover:text-umd-red focus:outline-none focus:ring-4 focus:ring-umd-red/50 md:text-base"
                 >
                   <Link to="/register/host" className="block w-full" aria-label="Register as a host">Host</Link>
                 </Button>

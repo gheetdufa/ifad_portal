@@ -1,6 +1,8 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 
-const { response, db } = require('/opt/nodejs/utils');
+let utils;
+try { utils = require('/opt/nodejs/utils'); } catch { utils = require('../../layers/shared/nodejs/utils'); }
+const { response, db } = utils;
 
 const TABLE_NAME = process.env.TABLE_NAME!;
 
@@ -10,7 +12,11 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
     const method = event.httpMethod;
     const queryStringParameters = event.queryStringParameters || {};
 
-    console.log(`Processing ${method} ${path}`, { queryStringParameters });
+    console.log(`Public handler processing ${method} ${path}`, {
+      queryStringParameters,
+      table: TABLE_NAME,
+      region: process.env.AWS_REGION || 'us-east-1'
+    });
 
     switch (true) {
       case path.includes('/public/hosts') && method === 'GET':
@@ -47,7 +53,7 @@ async function handleGetPublicHosts(queryParams: any): Promise<APIGatewayProxyRe
       lastEvaluatedKey 
     } = queryParams;
 
-    // Get all verified hosts who have visibility enabled
+    // Build base query for verified hosts (GSI2 partition by role)
     let params: any = {
       TableName: TABLE_NAME,
       IndexName: 'GSI2',
@@ -55,15 +61,15 @@ async function handleGetPublicHosts(queryParams: any): Promise<APIGatewayProxyRe
       ExpressionAttributeValues: {
         ':role': 'ROLE#host',
       },
-      FilterExpression: 'verified = :verified',
-      ExpressionAttributeNames: {},
+      FilterExpression: '#verified = :verified',
+      ExpressionAttributeNames: { '#verified': 'verified' },
       Limit: parseInt(limit),
     };
 
     params.ExpressionAttributeValues[':verified'] = true;
 
     // Add filters based on query parameters
-    let filterExpressions = ['verified = :verified'];
+    let filterExpressions = ['#verified = :verified'];
 
     if (industry) {
       filterExpressions.push('contains(industry, :industry)');
@@ -119,33 +125,60 @@ async function handleGetPublicHosts(queryParams: any): Promise<APIGatewayProxyRe
       params.ExclusiveStartKey = JSON.parse(decodeURIComponent(lastEvaluatedKey));
     }
 
-    const hosts = await db.query(params);
+    console.log('Querying public hosts from DynamoDB', {
+      table: TABLE_NAME,
+      index: 'GSI2',
+      gsiPK: 'ROLE#host',
+      limit: params.Limit,
+      filters: Object.keys(params.ExpressionAttributeValues || {})
+    });
+    let hosts: any[] = [];
+    try {
+      hosts = await db.query(params);
+      console.log('Public hosts query result', { count: hosts?.length || 0 });
+    } catch (queryError) {
+      console.error('GSI2 query failed; falling back to scan', queryError);
+      try {
+        // Fallback: scan whole table for verified hosts of role host
+        const scanParams: any = {
+          TableName: TABLE_NAME,
+          FilterExpression: 'GSI2PK = :role AND #verified = :verified',
+          ExpressionAttributeValues: { ':role': 'ROLE#host', ':verified': true },
+          ExpressionAttributeNames: { '#verified': 'verified' },
+          Limit: parseInt(limit),
+        };
+        hosts = await db.scan(scanParams);
+        console.log('Public hosts scan result', { count: hosts?.length || 0 });
+      } catch (scanError) {
+        console.error('Public hosts scan also failed; returning empty list', scanError);
+        hosts = [];
+      }
+    }
 
-    // Filter out sensitive information for public view
-    const publicHosts = hosts.map((host: any) => ({
-      userId: host.userId,
-      firstName: host.firstName,
-      lastName: host.lastName,
-      jobTitle: host.jobTitle,
-      organization: host.organization,
-      industry: host.industry,
-      careerFields: host.careerFields,
-      experienceType: host.experienceType,
-      location: host.location,
-      workLocation: host.workLocation,
-      bio: host.bio,
-      website: host.website,
-      dcMetroAccessible: host.dcMetroAccessible,
-      federalAgency: host.federalAgency,
-      citizenshipRequired: host.citizenshipRequired,
-      availabilityDays: host.availabilityDays,
-      springBreakAvailable: host.springBreakAvailable,
-      umdAlumni: host.umdAlumni,
-      maxStudents: host.maxStudents,
-      spotsAvailable: host.spotsAvailable,
-      hostExpectations: host.hostExpectations,
-      additionalInfo: host.additionalInfo,
-      // Exclude: email, phone, internal notes, etc.
+    // Filter out sensitive information for public view with defensive defaults
+    const publicHosts = (hosts || []).map((host: any) => ({
+      userId: host?.userId,
+      firstName: host?.firstName || '',
+      lastName: host?.lastName || '',
+      jobTitle: host?.jobTitle || '',
+      organization: host?.organization || '',
+      industry: host?.industry || '',
+      careerFields: host?.careerFields || host?.registrationData?.careerFields || [],
+      experienceType: host?.experienceType || host?.registrationData?.opportunityType || '',
+      location: host?.location || host?.workLocation || '',
+      workLocation: host?.workLocation || '',
+      bio: host?.bio || host?.registrationData?.organizationDescription || '',
+      website: host?.website || '',
+      dcMetroAccessible: !!host?.dcMetroAccessible,
+      federalAgency: !!host?.federalAgency,
+      citizenshipRequired: !!(host?.citizenshipRequired ?? host?.registrationData?.requiresCitizenship),
+      availabilityDays: host?.availabilityDays || host?.registrationData?.availableDays || [],
+      springBreakAvailable: !!host?.springBreakAvailable,
+      umdAlumni: !!host?.umdAlumni,
+      maxStudents: host?.maxStudents || 0,
+      spotsAvailable: host?.spotsAvailable ?? null,
+      hostExpectations: host?.hostExpectations || host?.registrationData?.experienceDescription || '',
+      additionalInfo: host?.additionalInfo || '',
     }));
 
     return response.success({
@@ -165,8 +198,9 @@ async function handleGetPublicHosts(queryParams: any): Promise<APIGatewayProxyRe
       lastEvaluatedKey: params.LastEvaluatedKey ? encodeURIComponent(JSON.stringify(params.LastEvaluatedKey)) : null,
     });
   } catch (error) {
-    console.error('Get public hosts error:', error);
-    return response.error('Failed to retrieve hosts', 500);
+    console.error('Get public hosts error (outer):', error);
+    // Never 500 here; return empty list for robustness
+    return response.success({ hosts: [], count: 0, filters: {}, lastEvaluatedKey: null });
   }
 }
 

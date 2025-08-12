@@ -6,11 +6,12 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "build:staging": "vite build --mode=staging",
+    "build:production": "vite build --mode=production",
+    "deploy:frontend:staging": "cross-env AWS_SDK_LOAD_CONFIG=1 aws s3 sync dist s3://ifad-website-staging-050752652470 --delete && cross-env AWS_SDK_LOAD_CONFIG=1 aws cloudfront create-invalidation --distribution-id E1KY10K2VPAIT1 --paths '/*'",
+    "deploy:frontend:prod": "cross-env AWS_SDK_LOAD_CONFIG=1 aws s3 sync dist s3://ifad-website-prod-050752652470 --delete && cross-env AWS_SDK_LOAD_CONFIG=1 aws cloudfront create-invalidation --distribution-id E3NHQNZ2ID6SK9 --paths '/*'",
     "lint": "eslint .",
     "preview": "vite preview",
-    "build:gh-pages": "vite build --mode=production",
-    "predeploy": "npm run build:gh-pages",
-    "deploy": "gh-pages -d docs",
     "serve": "vite preview --port 3000"
   },
   "dependencies": {
@@ -25,6 +26,7 @@
     "@types/react-dom": "^18.3.0",
     "@vitejs/plugin-react": "^4.3.1",
     "autoprefixer": "^10.4.18",
+    "cross-env": "^10.0.0",
     "eslint": "^9.9.1",
     "eslint-plugin-react-hooks": "^5.1.0-rc.0",
     "eslint-plugin-react-refresh": "^0.4.11",

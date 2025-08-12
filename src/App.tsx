@@ -1,6 +1,6 @@
 import React, { ErrorBoundary } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useSearchParams } from 'react-router-dom';
-import { AuthContext, useAuthProvider } from './hooks/useAuth';
+import { AuthContext, useAuthProvider, useAuth } from './hooks/useAuth';
 import Header from './components/layout/Header';
 import Footer from './components/layout/Footer';
 import HomePage from './pages/HomePage';
@@ -10,6 +10,7 @@ import StudentRegistration from './pages/student/StudentRegistration';
 import HostList from './pages/student/HostList';
 import HostDashboard from './pages/host/HostDashboard';
 import HostRegistration from './pages/host/HostRegistration';
+import HostSemesterRegistration from './pages/host/HostSemesterRegistration';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import HostManagement from './pages/admin/HostManagement';
 import StudentApplications from './pages/admin/StudentApplications';
@@ -24,7 +25,8 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode; allowedRoles: string
   children, 
   allowedRoles 
 }) => {
-  const { user, isLoading } = useAuthProvider();
+  const { user, isLoading } = useAuth();
+  console.log('[route] ProtectedRoute check', { allowedRoles, hasUser: !!user, isLoading, role: user?.role });
   
   if (isLoading) {
     return (
@@ -35,14 +37,38 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode; allowedRoles: string
   }
   
   if (!user) {
+    console.warn('[route] no user; redirecting to /login');
     return <Navigate to="/login" replace />;
   }
   
   if (!allowedRoles.includes(user.role)) {
+    console.warn('[route] role not allowed; redirecting to /');
     return <Navigate to="/" replace />;
   }
   
   return <>{children}</>;
+};
+
+// Auth-aware Login Route - redirects if already authenticated
+const AuthAwareLoginRoute: React.FC = () => {
+  const { user, isLoading } = useAuth();
+  
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-2 border-umd-red border-t-transparent"></div>
+      </div>
+    );
+  }
+  
+  if (user) {
+    // Redirect authenticated users to their dashboard
+    const dashboardPath = user.role === 'admin' ? '/admin' : 
+                         user.role === 'host' ? '/host' : '/student';
+    return <Navigate to={dashboardPath} replace />;
+  }
+  
+  return <LoginPage />;
 };
 
 // Registration Router Component to handle query params
@@ -61,14 +87,14 @@ function App() {
 
   return (
     <AuthContext.Provider value={auth}>
-      <Router basename={import.meta.env.DEV ? '' : '/ifad_portal'}>
+      <Router>
         <div className="min-h-screen flex flex-col bg-white">
           <Header />
           <main className="flex-1">
             <Routes>
               {/* Public Routes */}
               <Route path="/" element={<HomePage />} />
-              <Route path="/login" element={<LoginPage />} />
+              <Route path="/login" element={<AuthAwareLoginRoute />} />
               <Route path="/public-hosts" element={
                 <React.Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-2 border-umd-red border-t-transparent"></div></div>}>
                   {React.createElement(React.lazy(() => import('./pages/PublicHostList')))}
@@ -101,7 +127,8 @@ function App() {
                   <ProtectedRoute allowedRoles={['host']}>
                     <Routes>
                       <Route index element={<HostDashboard />} />
-                      {/* Add more host routes here */}
+                      <Route path="registration" element={<HostRegistration />} />
+                      <Route path="semester-registration" element={<HostSemesterRegistration />} />
                     </Routes>
                   </ProtectedRoute>
                 } 

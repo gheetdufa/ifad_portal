@@ -1,61 +1,144 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { User, Calendar, CheckCircle, Users, Edit, Mail, Phone, MapPin, Building, Briefcase, Settings, Star, Clock, UserPlus, RefreshCw } from 'lucide-react';
+import { 
+  User, Calendar, CheckCircle, Clock, AlertTriangle, Edit, Mail, 
+  RefreshCw, FileText, UserCheck, Settings, Building, Briefcase, MapPin 
+} from 'lucide-react';
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import Badge from '../../components/ui/Badge';
 import { apiService } from '../../services/api';
 
 const HostDashboard: React.FC = () => {
+  const [profileStatus, setProfileStatus] = useState('pending'); // 'pending', 'approved', 'rejected'
   const [registrationStatus, setRegistrationStatus] = useState('not_registered'); // 'not_registered', 'registered', 'pending'
-  const [currentSemester] = useState('Spring 2025');
-  const [isLoading, setIsLoading] = useState(false);
+  const [showOneTimeApproved, setShowOneTimeApproved] = useState(false);
+  const [currentSemester] = useState('Fall 2025');
+  const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [profile, setProfile] = useState<any | null>(null);
 
-  // Check registration status on component mount
+  // Check profile and registration status on component mount
   useEffect(() => {
-    checkRegistrationStatus();
+    checkHostStatus();
   }, [currentSemester]);
 
-  const checkRegistrationStatus = async () => {
+  const checkHostStatus = async () => {
     try {
-      const response = await apiService.getSemesterRegistration(currentSemester);
-      if (response.success && response.data.registered && response.data.registration) {
-        setRegistrationStatus(response.data.registration.status === 'approved' ? 'registered' : 'pending');
-      } else {
-        setRegistrationStatus('not_registered');
+      setIsLoading(true);
+      // Check if host profile is approved
+      const profileResponse = await apiService.getProfile();
+      if (profileResponse.success) {
+        const status = profileResponse.data.verified ? 'approved' : 'pending';
+        setProfileStatus(status);
+        setProfile(profileResponse.data);
+        if (status === 'approved') {
+          const seen = localStorage.getItem('ifad_host_seenApproved') === '1';
+          if (!seen) {
+            setShowOneTimeApproved(true);
+            localStorage.setItem('ifad_host_seenApproved', '1');
+          }
+        }
+        
+        // Only check registration if profile is approved
+        if (status === 'approved') {
+          try {
+            const regResponse = await apiService.getSemesterRegistration(currentSemester);
+            if (regResponse.success && regResponse.data.registered) {
+              setRegistrationStatus('registered');
+            } else {
+              setRegistrationStatus('not_registered');
+            }
+          } catch {
+            setRegistrationStatus('not_registered');
+          }
+        }
       }
     } catch (error) {
-      console.error('Error checking registration status:', error);
-      setRegistrationStatus('not_registered');
-    }
-  };
-
-  const handleSemesterRegistration = async () => {
-    setIsLoading(true);
-    try {
-      const registrationData = {
-        semester: currentSemester,
-        maxStudents: hostData.maxStudents,
-        availableDays: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
-        experienceType: 'both' as const,
-        additionalInfo: '',
-      };
-
-      const response = await apiService.registerForSemester(registrationData);
-      if (response.success) {
-        setRegistrationStatus('pending');
-      } else {
-        alert('Failed to register: ' + response.message);
-      }
-    } catch (error) {
-      console.error('Error registering for semester:', error);
-      alert('Failed to register for semester');
+      console.error('Error checking host status:', error);
+      setProfileStatus('pending');
     } finally {
       setIsLoading(false);
     }
   };
-  
-  // Mock host data - in production, this would come from API
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await checkHostStatus();
+    setIsRefreshing(false);
+  };
+
+  const TimelineCard: React.FC = () => {
+    const items = [
+      { label: 'Profile Created', status: 'done' as const, desc: 'Your host profile has been created' },
+      { label: 'Admin Review', status: profileStatus === 'approved' ? 'done' : 'inprogress', desc: profileStatus === 'approved' ? 'Approved by an administrator' : 'We are reviewing your information' },
+      { label: 'Semester Registration', status: profileStatus !== 'approved' ? 'locked' : registrationStatus === 'registered' ? 'done' : 'todo', desc: profileStatus !== 'approved' ? 'Available after approval' : registrationStatus === 'registered' ? `Registered for ${currentSemester}` : `Register for ${currentSemester}` },
+      { label: 'Matching & Scheduling', status: registrationStatus === 'registered' ? 'todo' : 'locked', desc: 'We will match you with students based on interests' },
+    ];
+
+    const getStatusBadge = (s: 'done' | 'inprogress' | 'todo' | 'locked') => {
+      switch (s) {
+        case 'done':
+          return <Badge variant="success" className="ml-2">Done</Badge>;
+        case 'inprogress':
+          return <Badge variant="warning" className="ml-2">In progress</Badge>;
+        case 'todo':
+          return <Badge variant="secondary" className="ml-2">Next</Badge>;
+        default:
+          return <Badge variant="secondary" className="ml-2">Locked</Badge>;
+      }
+    };
+
+    return (
+      <Card>
+        <h2 className="text-2xl font-bold text-gray-900 mb-4">Timeline</h2>
+        <div className="space-y-4">
+          {items.map((step, idx) => (
+            <div key={idx} className="flex items-start space-x-3">
+              <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0">
+                {idx === 0 && <User className="w-4 h-4 text-gray-700" />}
+                {idx === 1 && <CheckCircle className={`w-4 h-4 ${step.status === 'done' ? 'text-green-600' : 'text-yellow-600'}`} />}
+                {idx === 2 && <Calendar className="w-4 h-4 text-umd-red" />}
+                {idx === 3 && <Clock className="w-4 h-4 text-umd-black" />}
+              </div>
+              <div>
+                <div className="font-semibold text-gray-900 flex items-center">
+                  {step.label}
+                  {getStatusBadge(step.status)}
+                </div>
+                <p className="text-sm text-gray-600">{step.desc}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </Card>
+    );
+  };
+
+  const ProfileSummaryCard: React.FC = () => (
+    <Card>
+      <h2 className="text-2xl font-bold text-gray-900 mb-4">Your Information</h2>
+      <div className="space-y-3">
+        <div className="flex items-center space-x-2 text-gray-800"><User className="w-4 h-4 text-umd-red" /><span>{[profile?.firstName, profile?.lastName].filter(Boolean).join(' ') || '—'}</span></div>
+        <div className="flex items-center space-x-2 text-gray-800"><Mail className="w-4 h-4 text-umd-red" /><span>{profile?.email || '—'}</span></div>
+        <div className="flex items-center space-x-2 text-gray-800"><Building className="w-4 h-4 text-umd-red" /><span>{profile?.organization || '—'}</span></div>
+        <div className="flex items-center space-x-2 text-gray-800"><Briefcase className="w-4 h-4 text-umd-red" /><span>{profile?.jobTitle || '—'}</span></div>
+        <div className="flex items-center space-x-2 text-gray-800"><MapPin className="w-4 h-4 text-umd-red" /><span>{profile?.workLocation || '—'}</span></div>
+        <div className="pt-2"><Link to="/host/registration"><Button variant="outline" icon={Edit}>Edit Profile</Button></Link></div>
+      </div>
+    </Card>
+  );
+
+  const ResourcesCard: React.FC = () => (
+    <Card>
+      <h2 className="text-2xl font-bold text-gray-900 mb-4">Questions?</h2>
+      <p className="text-sm text-umd-black">
+        Email us at <a href="mailto:ifad@umd.edu" className="text-umd-red underline">ifad@umd.edu</a>
+      </p>
+    </Card>
+  );
+
+  // Mock host data - in production, this would come from the API
   const hostData = {
     firstName: 'Ms.',
     lastName: 'Harper',
@@ -64,555 +147,276 @@ const HostDashboard: React.FC = () => {
     industry: 'Technology',
     email: 'harper@techinnovators.com',
     phone: '(555) 123-4567',
-    address: '123 Main Street, College Park, MD 20742',
-    verified: true,
-    maxStudents: 2,
-    profileImage: '👩‍💼', // In real app, this would be an image URL
-    matchedStudents: [
-      {
-        id: '1',
-        firstName: 'Alex',
-        lastName: 'Chen',
-        major: 'Computer Science',
-        graduationYear: 2025,
-        email: 'achen@umd.edu',
-        phone: '(555) 987-6543'
-      },
-    ],
-    experienceType: 'both',
-    location: 'virtual',
-    bio: 'I am a software engineering manager with 8 years of experience in the tech industry. I\'m passionate about mentoring the next generation of developers.',
-    internshipFocus: 'Software Engineering'
+    profileImage: '👩‍💼',
   };
 
-  const upcomingTasks = [
-    {
-      id: 1,
-      title: 'Schedule with Alex Chen',
-      description: 'Coordinate your shadowing experience',
-      priority: 'high' as const,
-      dueDate: '2024-11-25',
-    },
-    {
-      id: 2,
-      title: 'Complete Host Survey',
-      description: 'Share feedback about the program',
-      priority: 'medium' as const,
-      dueDate: '2024-12-20',
-    },
-    {
-      id: 3,
-      title: 'Update Profile Information',
-      description: 'Review and update your hosting preferences',
-      priority: 'low' as const,
-      dueDate: '2024-12-31',
-    },
-  ];
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'approved':
+        return <Badge variant="success" className="flex items-center space-x-1">
+          <CheckCircle className="w-3 h-3" />
+          <span>Profile Approved</span>
+        </Badge>;
+      case 'pending':
+        return <Badge variant="warning" className="flex items-center space-x-1">
+          <Clock className="w-3 h-3" />
+          <span>Pending Admin Review</span>
+        </Badge>;
+      case 'rejected':
+        return <Badge variant="error" className="flex items-center space-x-1">
+          <AlertTriangle className="w-3 h-3" />
+          <span>Profile Rejected</span>
+        </Badge>;
+      default:
+        return null;
+    }
+  };
 
-  const programStats = [
-    { label: 'Students Matched', value: hostData.matchedStudents.length.toString(), icon: User, color: 'text-umd-red', bgColor: 'bg-red-50', shadowColor: 'shadow-red-200' },
-    { label: 'Available Spots', value: (hostData.maxStudents - hostData.matchedStudents.length).toString(), icon: Users, color: 'text-umd-gold', bgColor: 'bg-yellow-50', shadowColor: 'shadow-yellow-200' },
-    { label: 'Program Status', value: 'Active', icon: CheckCircle, color: 'text-green-600', bgColor: 'bg-green-50', shadowColor: 'shadow-green-200' },
-  ];
+  const renderProfilePendingView = () => (
+    <div className="text-center py-16">
+      <div className="w-24 h-24 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-6">
+        <Clock className="w-12 h-12 text-yellow-600" />
+      </div>
+      <h2 className="text-3xl font-bold text-gray-900 mb-4">Your Profile is Under Review</h2>
+      <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
+        Thank you for creating your IFAD host profile! Our admin team is currently reviewing your 
+        information to ensure you're ready to host UMD students.
+      </p>
+      <div className="bg-umd-gold/10 border border-umd-gold/40 rounded-lg p-6 max-w-2xl mx-auto mb-8">
+        <h3 className="text-lg font-semibold text-umd-black mb-3">What happens next?</h3>
+        <div className="space-y-2 text-left text-umd-black">
+          <p>✅ <strong>Step 1:</strong> Profile created (completed)</p>
+          <p>🔄 <strong>Step 2:</strong> Admin review (in progress)</p>
+          <p>⏳ <strong>Step 3:</strong> Semester registration (after approval)</p>
+        </div>
+      </div>
+      <p className="text-gray-500 mb-6">
+        You'll receive an email notification once your profile has been approved.
+      </p>
+      <div className="flex justify-center space-x-4">
+        <Button variant="outline" onClick={handleRefresh} disabled={isRefreshing}>
+          {isRefreshing ? <RefreshCw className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+          {isRefreshing ? 'Checking...' : 'Check Status'}
+        </Button>
+        <Link to="/host/registration">
+          <Button variant="outline" icon={Edit}>
+            Edit Profile
+          </Button>
+        </Link>
+      </div>
+    </div>
+  );
 
-  const profileFields = [
-    { label: 'Company', value: hostData.organization, icon: Building },
-    { label: 'Email', value: hostData.email, icon: Mail },
-    { label: 'Phone', value: hostData.phone, icon: Phone },
-    { label: 'Address', value: hostData.address, icon: MapPin },
-    { label: 'Internship Focus', value: hostData.internshipFocus, icon: Briefcase },
-  ];
+  const renderApprovedNotRegisteredView = () => (
+    <div className="text-center py-16">
+      <div className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
+        <CheckCircle className="w-12 h-12 text-green-600" />
+      </div>
+      <h2 className="text-3xl font-bold text-gray-900 mb-4">Profile Approved! 🎉</h2>
+      <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
+        Great news! Your host profile has been approved. Now you can register for the {currentSemester} semester 
+        to start hosting UMD students.
+      </p>
+      <div className="bg-green-50 border border-green-200 rounded-lg p-6 max-w-2xl mx-auto mb-8">
+        <h3 className="text-lg font-semibold text-green-900 mb-3">Ready for the next step?</h3>
+        <div className="space-y-2 text-left text-green-800">
+          <p>✅ <strong>Step 1:</strong> Profile created & approved</p>
+          <p>📝 <strong>Step 2:</strong> Register for {currentSemester} semester</p>
+          <p>🤝 <strong>Step 3:</strong> Get matched with students</p>
+        </div>
+      </div>
+      <div className="flex justify-center space-x-4">
+        <Link to="/host/semester-registration">
+          <Button variant="primary" size="lg" className="bg-gradient-to-r from-umd-red to-red-600 hover:from-red-600 hover:to-red-700">
+            Register for {currentSemester}
+          </Button>
+        </Link>
+        <Link to="/host/registration">
+          <Button variant="outline" icon={Edit}>
+            Edit Profile
+          </Button>
+        </Link>
+      </div>
+
+      {/* One-time plus full dashboard layout */}
+      <div className="mt-12 grid grid-cols-1 lg:grid-cols-3 gap-6 text-left">
+        <div className="lg:col-span-2 space-y-6">
+          <TimelineCard />
+        </div>
+        <div className="space-y-6">
+          <ProfileSummaryCard />
+          <ResourcesCard />
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderApprovedBannerDashboard = () => (
+    <div className="space-y-8">
+      <div className="bg-green-50 border border-green-200 rounded-xl p-6 flex items-center justify-between">
+        <div className="flex items-center space-x-3">
+          <CheckCircle className="w-6 h-6 text-green-600" />
+          <div>
+            <p className="font-semibold text-green-900">Your host profile is approved</p>
+            <p className="text-sm text-green-800">Next: register for {currentSemester} to receive student matches</p>
+          </div>
+        </div>
+        <Link to="/host/semester-registration">
+          <Button variant="primary" className="bg-gradient-to-r from-umd-red to-red-600 hover:from-red-600 hover:to-red-700">
+            Register for {currentSemester}
+          </Button>
+        </Link>
+      </div>
+
+      <Card>
+        <h2 className="text-xl font-bold text-gray-900 mb-4">Quick actions</h2>
+        <div className="flex flex-wrap gap-3">
+          <Link to="/host/registration">
+            <Button variant="outline" icon={Edit}>Edit Profile</Button>
+          </Link>
+          <Button variant="outline" icon={RefreshCw} onClick={handleRefresh} disabled={isRefreshing}>
+            {isRefreshing ? 'Checking...' : 'Refresh Status'}
+          </Button>
+        </div>
+      </Card>
+
+      {/* Full dashboard grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 space-y-6">
+          <TimelineCard />
+        </div>
+        <div className="space-y-6">
+          <ProfileSummaryCard />
+          <ResourcesCard />
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderRegisteredView = () => (
+    <div className="space-y-8">
+      {/* Welcome Header */}
+      <div className="bg-gradient-to-r from-umd-red to-red-600 text-white rounded-xl p-8 relative overflow-hidden">
+        <div className="relative z-10">
+          <div className="flex items-center space-x-6">
+            <div className="text-6xl">{hostData.profileImage}</div>
+            <div>
+              <h1 className="text-3xl md:text-4xl font-bold mb-2">
+                Welcome back, {hostData.firstName} {hostData.lastName}!
+              </h1>
+              <div className="flex items-center space-x-4 text-red-100 mb-2">
+                <div className="flex items-center space-x-2">
+                  <Building className="w-4 h-4" />
+                  <span>{hostData.organization}</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Briefcase className="w-4 h-4" />
+                  <span>{hostData.jobTitle}</span>
+                </div>
+              </div>
+              <div className="flex items-center space-x-2">
+                <CheckCircle className="w-4 h-4 text-green-300" />
+                <span className="text-green-200">Registered for {currentSemester}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        {/* Decorative background */}
+        <div className="absolute inset-0 opacity-10">
+          <div className="absolute inset-0" style={{
+            backgroundImage: `radial-gradient(circle at 2px 2px, white 1px, transparent 0)`,
+            backgroundSize: '40px 40px'
+          }}></div>
+        </div>
+      </div>
+
+      {/* Quick Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <Card className="text-center p-6">
+          <Calendar className="w-8 h-8 text-umd-red mx-auto mb-4" />
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">Current Semester</h3>
+          <p className="text-2xl font-bold text-umd-red">{currentSemester}</p>
+        </Card>
+        <Card className="text-center p-6">
+          <UserCheck className="w-8 h-8 text-umd-gold mx-auto mb-4" />
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">Student Matches</h3>
+          <p className="text-2xl font-bold text-umd-gold">Coming Soon</p>
+        </Card>
+        <Card className="text-center p-6">
+          <FileText className="w-8 h-8 text-umd-black mx-auto mb-4" />
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">Next Steps</h3>
+          <p className="text-sm text-gray-600">Wait for student matching</p>
+        </Card>
+      </div>
+
+      {/* Action Items */}
+          <Card>
+            <h2 className="text-2xl font-bold text-gray-900 mb-6">What's Next?</h2>
+            <div className="space-y-4">
+              <div className="flex items-start space-x-4 p-4 rounded-lg border border-umd-gold/40 bg-umd-gold/10">
+                <div className="w-8 h-8 bg-umd-red text-white rounded-full flex items-center justify-center flex-shrink-0 mt-1">
+              <span className="text-sm font-bold">1</span>
+            </div>
+            <div>
+              <h3 className="font-semibold text-gray-900">Student Matching (Late October)</h3>
+              <p className="text-gray-600">
+                We'll match you with UMD students based on their interests and your expertise. 
+                You'll be notified via email when matches are available.
+              </p>
+            </div>
+          </div>
+              <div className="flex items-start space-x-4 p-4 rounded-lg border border-umd-red/20 bg-umd-red/5">
+                <div className="w-8 h-8 bg-umd-red text-white rounded-full flex items-center justify-center flex-shrink-0 mt-1">
+              <span className="text-sm font-bold">2</span>
+            </div>
+            <div>
+              <h3 className="font-semibold text-gray-900">Coordinate Experience</h3>
+              <p className="text-gray-600">
+                Work with matched students to schedule your job shadowing or interview sessions 
+                for late October through mid-January 2026.
+              </p>
+            </div>
+          </div>
+        </div>
+      </Card>
+
+      {/* Quick Actions */}
+      <div className="flex flex-wrap gap-4 justify-center">
+        <Link to="/host/registration">
+          <Button variant="outline" icon={Edit}>
+            Edit Profile
+          </Button>
+        </Link>
+        <Button variant="outline" icon={Mail}>
+          Contact Support
+        </Button>
+        <Button variant="outline" icon={Settings}>
+          Settings
+        </Button>
+      </div>
+    </div>
+  );
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-600 border-t-transparent mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading your dashboard...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50">
-      {/* Animated Background Elements */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-r from-umd-red/10 to-umd-gold/10 rounded-full blur-3xl animate-float"></div>
-        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-gradient-to-r from-blue-500/10 to-purple-500/10 rounded-full blur-3xl animate-float" style={{ animationDelay: '2s' }}></div>
-        <div className="absolute top-1/2 left-1/2 w-60 h-60 bg-gradient-to-r from-green-400/10 to-blue-400/10 rounded-full blur-3xl animate-float" style={{ animationDelay: '4s' }}></div>
-      </div>
-
-      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Enhanced Hero Header */}
-        <div className="mb-12 relative">
-          <div className="bg-gradient-to-r from-umd-red via-red-600 to-umd-red rounded-3xl p-8 text-white relative overflow-hidden shadow-2xl">
-            {/* Background Pattern */}
-            <div className="absolute inset-0 opacity-10">
-              <div className="absolute inset-0" style={{
-                backgroundImage: `radial-gradient(circle at 2px 2px, white 1px, transparent 0)`,
-                backgroundSize: '40px 40px'
-              }}></div>
-            </div>
-            
-            {/* Floating geometric shapes */}
-            <div className="absolute top-4 right-4 w-4 h-4 bg-white/20 rounded-full animate-ping"></div>
-            <div className="absolute bottom-4 left-8 w-6 h-6 bg-umd-gold/30 rotate-45 animate-pulse"></div>
-            <div className="absolute top-1/2 right-1/4 w-3 h-3 bg-white/15 rounded-full animate-bounce"></div>
-            
-            <div className="relative z-10 flex items-center justify-between">
-              <div className="flex items-center space-x-6">
-                <div className="text-8xl animate-bounce">{hostData.profileImage}</div>
-                <div>
-                  <h1 className="text-4xl md:text-5xl font-bold mb-2 animate-slideInLeft">
-                    Welcome, {hostData.firstName} <span className="bg-gradient-to-r from-white via-umd-gold to-white bg-clip-text text-transparent animate-gradient-x">{hostData.lastName}</span>!
-                  </h1>
-                  <p className="text-xl md:text-2xl text-red-100 animate-slideInLeft" style={{ animationDelay: '0.2s' }}>
-                    {hostData.jobTitle} at {hostData.organization}
-                  </p>
-                  <p className="text-lg text-red-200 mt-2 animate-slideInLeft" style={{ animationDelay: '0.4s' }}>
-                    Manage your hosting experience and connect with students
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center space-x-4 animate-slideInRight">
-                {hostData.verified ? (
-                  <div className="flex items-center space-x-2 bg-green-500/20 backdrop-blur-sm border border-green-300/30 px-4 py-2 rounded-full">
-                    <Star className="w-5 h-5 text-green-200" />
-                                         <Badge variant="success">Verified Host</Badge>
-                  </div>
-                ) : (
-                  <div className="flex items-center space-x-2 bg-yellow-500/20 backdrop-blur-sm border border-yellow-300/30 px-4 py-2 rounded-full">
-                    <Clock className="w-5 h-5 text-yellow-200" />
-                                         <Badge variant="warning">Pending Verification</Badge>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Enhanced Quick Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
-          {programStats.map((stat, index) => {
-            const Icon = stat.icon;
-            return (
-              <Card key={index} className={`text-center group hover:shadow-2xl transition-all duration-500 hover:-translate-y-2 ${stat.bgColor} border-2 border-transparent hover:border-white hover:shadow-lg hover:${stat.shadowColor} relative overflow-hidden`}>
-                <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-                <div className="relative z-10">
-                  <div className={`w-16 h-16 ${stat.color} mx-auto mb-4 p-3 rounded-full ${stat.bgColor.replace('50', '100')} group-hover:scale-110 group-hover:rotate-12 transition-all duration-500 shadow-lg`}>
-                    <Icon className="w-full h-full" />
-                  </div>
-                  <p className="text-4xl font-bold text-umd-black group-hover:text-umd-red transition-colors duration-500 mb-2">{stat.value}</p>
-                  <p className="text-lg text-umd-gray-600 group-hover:text-umd-black transition-colors duration-300">{stat.label}</p>
-                  <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-0 h-1 bg-gradient-to-r from-umd-red to-umd-gold transition-all duration-500 group-hover:w-full"></div>
-                </div>
-              </Card>
-            );
-          })}
-        </div>
-
-        {/* Semester Registration Section */}
-        <div className="mb-12">
-          <Card className={`group hover:shadow-2xl transition-all duration-500 hover:-translate-y-1 relative overflow-hidden border-2 ${
-            registrationStatus === 'registered' 
-              ? 'bg-gradient-to-br from-green-50 via-emerald-50 to-green-50 border-green-200 hover:border-green-300' 
-              : registrationStatus === 'pending'
-              ? 'bg-gradient-to-br from-yellow-50 via-amber-50 to-yellow-50 border-yellow-200 hover:border-yellow-300'
-              : 'bg-gradient-to-br from-red-50 via-pink-50 to-red-50 border-red-200 hover:border-red-300'
-          }`}>
-            <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-            <div className="relative z-10">
-              <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center space-x-4">
-                  <div className={`p-3 rounded-full ${
-                    registrationStatus === 'registered' 
-                      ? 'bg-green-100 text-green-600' 
-                      : registrationStatus === 'pending'
-                      ? 'bg-yellow-100 text-yellow-600'
-                      : 'bg-red-100 text-red-600'
-                  }`}>
-                    {registrationStatus === 'registered' ? (
-                      <CheckCircle className="w-8 h-8" />
-                    ) : registrationStatus === 'pending' ? (
-                      <Clock className="w-8 h-8" />
-                    ) : (
-                      <UserPlus className="w-8 h-8" />
-                    )}
-                  </div>
-                  <div>
-                    <h2 className="text-3xl font-bold text-umd-black">
-                      {currentSemester} Registration
-                    </h2>
-                    <p className="text-lg text-umd-gray-600">
-                      {registrationStatus === 'registered' 
-                        ? 'You are registered for this semester' 
-                        : registrationStatus === 'pending'
-                        ? 'Your registration is pending approval'
-                        : 'Register to host students this semester'}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center space-x-3">
-                  {registrationStatus === 'registered' ? (
-                    <Badge variant="success" className="text-lg px-4 py-2">
-                      <CheckCircle className="w-5 h-5 mr-2" />
-                      Registered
-                    </Badge>
-                  ) : registrationStatus === 'pending' ? (
-                    <Badge variant="warning" className="text-lg px-4 py-2">
-                      <Clock className="w-5 h-5 mr-2" />
-                      Pending
-                    </Badge>
-                  ) : (
-                    <Badge variant="error" className="text-lg px-4 py-2">
-                      <UserPlus className="w-5 h-5 mr-2" />
-                      Not Registered
-                    </Badge>
-                  )}
-                </div>
-              </div>
-
-              {/* Registration Action Area */}
-              <div className={`p-6 rounded-2xl ${
-                registrationStatus === 'registered' 
-                  ? 'bg-green-100/50 border border-green-200' 
-                  : registrationStatus === 'pending'
-                  ? 'bg-yellow-100/50 border border-yellow-200'
-                  : 'bg-red-100/50 border border-red-200'
-              }`}>
-                {registrationStatus === 'not_registered' ? (
-                  <div className="text-center">
-                    <h3 className="text-2xl font-bold text-umd-black mb-4">Ready to Host Again?</h3>
-                    <p className="text-lg text-umd-gray-600 mb-6 max-w-2xl mx-auto">
-                      Register for {currentSemester} to connect with new students and continue making an impact through the IFAD program. Your profile information is already saved.
-                    </p>
-                    <div className="flex justify-center space-x-4">
-                      <Button 
-                        variant="primary" 
-                        size="lg" 
-                        className="bg-gradient-to-r from-umd-red to-red-600 hover:from-red-600 hover:to-red-700 text-xl px-8 py-4 hover:scale-105 transition-all duration-300 shadow-lg"
-                        icon={UserPlus}
-                        onClick={handleSemesterRegistration}
-                        disabled={isLoading}
-                      >
-                        {isLoading ? 'Registering...' : `Register for ${currentSemester}`}
-                      </Button>
-                      <Button 
-                        variant="outline" 
-                        size="lg" 
-                        className="text-xl px-6 py-4 hover:bg-umd-gray-100 hover:scale-105 transition-all duration-300"
-                        icon={Edit}
-                      >
-                        Update Profile First
-                      </Button>
-                    </div>
-                  </div>
-                ) : registrationStatus === 'pending' ? (
-                  <div className="text-center">
-                    <h3 className="text-2xl font-bold text-umd-black mb-4">Registration Submitted</h3>
-                    <p className="text-lg text-umd-gray-600 mb-6">
-                      Thank you for registering for {currentSemester}! Our team is reviewing your registration and will confirm your participation soon.
-                    </p>
-                    <div className="flex justify-center space-x-4">
-                      <Button 
-                        variant="outline" 
-                        size="lg" 
-                        className="text-xl px-6 py-4 hover:bg-yellow-100 hover:scale-105 transition-all duration-300"
-                        icon={RefreshCw}
-                      >
-                        Check Status
-                      </Button>
-                      <Button 
-                        variant="outline" 
-                        size="lg" 
-                        className="text-xl px-6 py-4 hover:bg-umd-gray-100 hover:scale-105 transition-all duration-300"
-                        icon={Edit}
-                      >
-                        Edit Registration
-                      </Button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="text-center">
-                    <h3 className="text-2xl font-bold text-umd-black mb-4">You're All Set!</h3>
-                    <p className="text-lg text-umd-gray-600 mb-6">
-                      You are registered for {currentSemester}. Student matching will begin soon, and you'll be notified when students are matched with you.
-                    </p>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
-                      <div className="p-4 bg-white/70 rounded-xl border border-green-200">
-                        <h4 className="font-bold text-green-700 mb-2">Registration Status</h4>
-                        <p className="text-green-600">✓ Confirmed</p>
-                      </div>
-                      <div className="p-4 bg-white/70 rounded-xl border border-green-200">
-                        <h4 className="font-bold text-green-700 mb-2">Next Step</h4>
-                        <p className="text-green-600">Student matching begins Nov 1</p>
-                      </div>
-                      <div className="p-4 bg-white/70 rounded-xl border border-green-200">
-                        <h4 className="font-bold text-green-700 mb-2">Max Students</h4>
-                        <p className="text-green-600">{hostData.maxStudents} students</p>
-                      </div>
-                    </div>
-                    <div className="flex justify-center space-x-4 mt-6">
-                      <Button 
-                        variant="outline" 
-                        size="lg" 
-                        className="text-xl px-6 py-4 hover:bg-green-100 hover:scale-105 transition-all duration-300"
-                        icon={Edit}
-                      >
-                        Update Registration
-                      </Button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          </Card>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Main Content */}
-          <div className="lg:col-span-2 space-y-8">
-            {/* Enhanced Profile Summary */}
-            <Card className="group hover:shadow-2xl transition-all duration-500 hover:-translate-y-1 bg-gradient-to-br from-white via-gray-50 to-white border-2 border-transparent hover:border-umd-red/20 relative overflow-hidden">
-              <div className="absolute inset-0 bg-gradient-to-br from-umd-red/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-              <div className="relative z-10">
-                <div className="flex items-center justify-between mb-8">
-                  <h2 className="text-2xl font-bold text-umd-black group-hover:text-umd-red transition-colors duration-300">Your Profile</h2>
-                  <Button variant="outline" size="sm" icon={Edit} className="hover:bg-umd-red hover:text-white hover:scale-105 transition-all duration-300">
-                    <Link to="/host/profile">Edit</Link>
-                  </Button>
-                </div>
-                
-                <div className="space-y-6">
-                  {profileFields.map((field, index) => {
-                    const Icon = field.icon;
-                    return (
-                      <div key={index} className="flex items-center space-x-4 p-4 bg-gradient-to-r from-gray-50 to-white rounded-xl hover:from-umd-red/5 hover:to-umd-gold/5 transition-all duration-300 group/item border border-transparent hover:border-umd-red/20">
-                        <div className="p-2 bg-umd-red/10 rounded-lg group-hover/item:bg-umd-red group-hover/item:text-white transition-all duration-300">
-                          <Icon className="w-5 h-5 text-umd-red group-hover/item:text-white" />
-                        </div>
-                        <div className="flex justify-between w-full items-center">
-                          <div>
-                            <span className="text-sm font-medium text-umd-gray-600 group-hover/item:text-umd-black">{field.label}</span>
-                            <p className="text-umd-black font-medium">{field.value}</p>
-                          </div>
-                          <Button variant="outline" size="sm" className="hover:bg-umd-red hover:text-white hover:scale-105 transition-all duration-300">
-                            Edit
-                          </Button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                  
-                  <div className="flex items-start space-x-4 p-4 bg-gradient-to-r from-gray-50 to-white rounded-xl hover:from-umd-red/5 hover:to-umd-gold/5 transition-all duration-300 group/item border border-transparent hover:border-umd-red/20">
-                    <div className="p-2 bg-umd-red/10 rounded-lg group-hover/item:bg-umd-red transition-all duration-300">
-                      <User className="w-5 h-5 text-umd-red group-hover/item:text-white" />
-                    </div>
-                    <div className="flex justify-between w-full">
-                      <div>
-                        <span className="text-sm font-medium text-umd-gray-600 group-hover/item:text-umd-black">Professional Bio</span>
-                        <p className="text-umd-black mt-1 leading-relaxed">{hostData.bio}</p>
-                      </div>
-                      <Button variant="outline" size="sm" className="hover:bg-umd-red hover:text-white hover:scale-105 transition-all duration-300">
-                        Edit
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </Card>
-
-            {/* Enhanced Matched Students */}
-            <Card className="group hover:shadow-2xl transition-all duration-500 hover:-translate-y-1 bg-gradient-to-br from-white via-blue-50 to-white border-2 border-transparent hover:border-blue-200 relative overflow-hidden">
-              <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-              <div className="relative z-10">
-                <h2 className="text-2xl font-bold text-umd-black mb-8 group-hover:text-blue-600 transition-colors duration-300">Your Matched Students</h2>
-                
-                {hostData.matchedStudents.length > 0 ? (
-                  <div className="space-y-6">
-                    {hostData.matchedStudents.map((student) => (
-                      <div key={student.id} className="p-6 bg-gradient-to-r from-white to-blue-50 rounded-2xl hover:from-blue-50 hover:to-blue-100 transition-all duration-500 group/student border-2 border-transparent hover:border-blue-200 hover:shadow-lg hover:-translate-y-1">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center space-x-6">
-                            <div className="w-16 h-16 bg-gradient-to-br from-umd-red to-red-600 rounded-full flex items-center justify-center shadow-lg group-hover/student:scale-110 transition-transform duration-300">
-                              <span className="text-white font-bold text-lg">
-                                {student.firstName[0]}{student.lastName[0]}
-                              </span>
-                            </div>
-                            <div>
-                              <h3 className="text-xl font-bold text-umd-black group-hover/student:text-blue-600 transition-colors duration-300">
-                                {student.firstName} {student.lastName}
-                              </h3>
-                              <p className="text-umd-gray-600 text-lg">
-                                {student.major} • Class of {student.graduationYear}
-                              </p>
-                              <div className="flex items-center space-x-4 mt-2">
-                                <span className="text-sm text-umd-gray-500 flex items-center">
-                                  <Mail className="w-4 h-4 mr-1" /> {student.email}
-                                </span>
-                                <span className="text-sm text-umd-gray-500 flex items-center">
-                                  <Phone className="w-4 h-4 mr-1" /> {student.phone}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-                          <div className="flex space-x-3">
-                            <Button variant="outline" size="sm" icon={Mail} className="hover:bg-blue-500 hover:text-white hover:scale-105 transition-all duration-300">
-                              Contact
-                            </Button>
-                            <Button variant="primary" size="sm" icon={Calendar} className="bg-gradient-to-r from-umd-red to-red-600 hover:from-red-600 hover:to-red-700 hover:scale-105 transition-all duration-300">
-                              Schedule
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-12">
-                    <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6 group-hover:bg-blue-100 transition-colors duration-300">
-                      <Users className="w-12 h-12 text-umd-gray-400 group-hover:text-blue-400 transition-colors duration-300" />
-                    </div>
-                    <h3 className="text-2xl font-bold text-umd-gray-900 mb-3">No matches yet</h3>
-                    <p className="text-lg text-umd-gray-600">
-                      You'll be notified when students are matched with you.
-                    </p>
-                  </div>
-                )}
-              </div>
-            </Card>
-
-            {/* Enhanced Program Guidelines */}
-            <Card className="group hover:shadow-2xl transition-all duration-500 hover:-translate-y-1 bg-gradient-to-br from-white via-green-50 to-white border-2 border-transparent hover:border-green-200 relative overflow-hidden">
-              <div className="absolute inset-0 bg-gradient-to-br from-green-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-              <div className="relative z-10">
-                <h2 className="text-2xl font-bold text-umd-black mb-8 group-hover:text-green-600 transition-colors duration-300">Hosting Guidelines</h2>
-                <div className="space-y-6">
-                  <div className="flex items-start space-x-4 p-6 bg-gradient-to-r from-blue-50 to-blue-100 rounded-2xl hover:from-blue-100 hover:to-blue-200 transition-all duration-300 group/guideline border-l-4 border-blue-500">
-                    <div className="w-6 h-6 bg-blue-600 rounded-full mt-1 flex items-center justify-center group-hover/guideline:scale-110 transition-transform duration-300">
-                      <div className="w-2 h-2 bg-white rounded-full"></div>
-                    </div>
-                    <div>
-                      <h3 className="text-xl font-bold text-umd-black mb-2">Before the Experience</h3>
-                      <p className="text-umd-gray-600 leading-relaxed">
-                        Coordinate with your matched student(s) to schedule the experience and share any preparation materials.
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-start space-x-4 p-6 bg-gradient-to-r from-green-50 to-green-100 rounded-2xl hover:from-green-100 hover:to-green-200 transition-all duration-300 group/guideline border-l-4 border-green-500">
-                    <div className="w-6 h-6 bg-green-600 rounded-full mt-1 flex items-center justify-center group-hover/guideline:scale-110 transition-transform duration-300">
-                      <div className="w-2 h-2 bg-white rounded-full"></div>
-                    </div>
-                    <div>
-                      <h3 className="text-xl font-bold text-umd-black mb-2">During the Experience</h3>
-                      <p className="text-umd-gray-600 leading-relaxed">
-                        Share insights about your career path, daily responsibilities, and industry trends. Encourage questions.
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-start space-x-4 p-6 bg-gradient-to-r from-yellow-50 to-yellow-100 rounded-2xl hover:from-yellow-100 hover:to-yellow-200 transition-all duration-300 group/guideline border-l-4 border-yellow-500">
-                    <div className="w-6 h-6 bg-yellow-600 rounded-full mt-1 flex items-center justify-center group-hover/guideline:scale-110 transition-transform duration-300">
-                      <div className="w-2 h-2 bg-white rounded-full"></div>
-                    </div>
-                    <div>
-                      <h3 className="text-xl font-bold text-umd-black mb-2">After the Experience</h3>
-                      <p className="text-umd-gray-600 leading-relaxed">
-                        Complete the host feedback survey and consider connecting with students on LinkedIn.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </Card>
-          </div>
-
-          {/* Enhanced Sidebar */}
-          <div className="space-y-8">
-            {/* Enhanced Upcoming Tasks */}
-            <Card className="group hover:shadow-2xl transition-all duration-500 hover:-translate-y-1 bg-gradient-to-br from-white via-purple-50 to-white border-2 border-transparent hover:border-purple-200 relative overflow-hidden">
-              <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-              <div className="relative z-10">
-                <h3 className="text-xl font-bold text-umd-black mb-6 group-hover:text-purple-600 transition-colors duration-300">Upcoming Tasks</h3>
-                <div className="space-y-6">
-                  {upcomingTasks.map((task) => (
-                    <div key={task.id} className="p-4 bg-gradient-to-r from-white to-purple-50 rounded-xl hover:from-purple-50 hover:to-purple-100 transition-all duration-300 border border-transparent hover:border-purple-200 group/task">
-                      <div className="flex items-center justify-between mb-3">
-                        <h4 className="font-bold text-umd-black group-hover/task:text-purple-600 transition-colors duration-300">{task.title}</h4>
-                                                 <Badge 
-                           variant={task.priority === 'high' ? 'error' : task.priority === 'medium' ? 'warning' : 'primary'} 
-                           size="sm"
-                         >
-                          {task.priority}
-                        </Badge>
-                      </div>
-                      <p className="text-umd-gray-600 mb-2 leading-relaxed">{task.description}</p>
-                      <p className="text-sm text-umd-gray-500 flex items-center">
-                        <Clock className="w-4 h-4 mr-1" />
-                        Due: {new Date(task.dueDate).toLocaleDateString()}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </Card>
-
-            {/* Enhanced Quick Actions */}
-            <Card className="group hover:shadow-2xl transition-all duration-500 hover:-translate-y-1 bg-gradient-to-br from-white via-orange-50 to-white border-2 border-transparent hover:border-orange-200 relative overflow-hidden">
-              <div className="absolute inset-0 bg-gradient-to-br from-orange-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-              <div className="relative z-10">
-                <h3 className="text-xl font-bold text-umd-black mb-6 group-hover:text-orange-600 transition-colors duration-300">Quick Actions</h3>
-                <div className="space-y-4">
-                  <Button variant="primary" className="w-full justify-start bg-gradient-to-r from-umd-red to-red-600 hover:from-red-600 hover:to-red-700 hover:scale-105 transition-all duration-300 shadow-lg" icon={Settings}>
-                    <Link to="/host/settings">Account Settings</Link>
-                  </Button>
-                  <Button variant="outline" className="w-full justify-start hover:bg-blue-500 hover:text-white hover:scale-105 transition-all duration-300" icon={Edit}>
-                    <Link to="/host/profile">Edit Profile</Link>
-                  </Button>
-                  <Button variant="outline" className="w-full justify-start hover:bg-green-500 hover:text-white hover:scale-105 transition-all duration-300" icon={Calendar}>
-                    <Link to="/host/availability">Update Availability</Link>
-                  </Button>
-                  <Button variant="outline" className="w-full justify-start hover:bg-purple-500 hover:text-white hover:scale-105 transition-all duration-300" icon={Users}>
-                    <Link to="/host/students">View All Students</Link>
-                  </Button>
-                </div>
-              </div>
-            </Card>
-
-            {/* Enhanced Program Information */}
-            <Card className="group hover:shadow-2xl transition-all duration-500 hover:-translate-y-1 bg-gradient-to-br from-white via-emerald-50 to-white border-2 border-transparent hover:border-emerald-200 relative overflow-hidden">
-              <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-              <div className="relative z-10">
-                <h3 className="text-xl font-bold text-umd-black mb-6 group-hover:text-emerald-600 transition-colors duration-300">Program Dates</h3>
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between p-3 bg-gradient-to-r from-green-50 to-green-100 rounded-lg">
-                    <span className="text-umd-gray-600 font-medium">Host Registration</span>
-                    <span className="text-green-600 font-bold flex items-center">
-                      <CheckCircle className="w-4 h-4 mr-1" />
-                      Complete
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between p-3 bg-gradient-to-r from-red-50 to-red-100 rounded-lg">
-                    <span className="text-umd-gray-600 font-medium">Student Matching</span>
-                    <span className="text-umd-red font-bold">Nov 10</span>
-                  </div>
-                  <div className="flex items-center justify-between p-3 bg-gradient-to-r from-blue-50 to-blue-100 rounded-lg">
-                    <span className="text-umd-gray-600 font-medium">Experience Window</span>
-                    <span className="text-umd-black font-bold">Nov 15 - Dec 15</span>
-                  </div>
-                </div>
-              </div>
-            </Card>
-
-            {/* Enhanced Support */}
-            <Card className="group hover:shadow-2xl transition-all duration-500 hover:-translate-y-1 bg-gradient-to-br from-white via-indigo-50 to-white border-2 border-transparent hover:border-indigo-200 relative overflow-hidden">
-              <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-              <div className="relative z-10">
-                <h3 className="text-xl font-bold text-umd-black mb-6 group-hover:text-indigo-600 transition-colors duration-300">Need Help?</h3>
-                <div className="space-y-3">
-                  <Button variant="outline" size="sm" className="w-full justify-start hover:bg-indigo-500 hover:text-white hover:scale-105 transition-all duration-300">
-                    <Link to="/host/faq">Host FAQ</Link>
-                  </Button>
-                  <Button variant="outline" size="sm" className="w-full justify-start hover:bg-emerald-500 hover:text-white hover:scale-105 transition-all duration-300">
-                    <Link to="/contact">Contact Program Team</Link>
-                  </Button>
-                  <Button variant="outline" size="sm" className="w-full justify-start hover:bg-orange-500 hover:text-white hover:scale-105 transition-all duration-300">
-                    <Link to="/host/resources">Host Resources</Link>
-                  </Button>
-                </div>
-              </div>
-            </Card>
-          </div>
-        </div>
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <Card>
+          {profileStatus === 'pending' && renderProfilePendingView()}
+          {profileStatus === 'approved' && showOneTimeApproved && registrationStatus === 'not_registered' && renderApprovedNotRegisteredView()}
+          {profileStatus === 'approved' && !showOneTimeApproved && registrationStatus === 'not_registered' && renderApprovedBannerDashboard()}
+          {profileStatus === 'approved' && registrationStatus === 'registered' && renderRegisteredView()}
+        </Card>
       </div>
     </div>
   );

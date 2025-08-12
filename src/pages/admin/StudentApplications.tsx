@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { 
   FileText, Search, Filter, Eye, CheckCircle, XCircle, Download, Upload,
@@ -7,121 +7,53 @@ import {
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import Badge from '../../components/ui/Badge';
+import { apiService } from '../../services/api';
 
 const StudentApplications: React.FC = () => {
-  const [selectedFilter, setSelectedFilter] = useState('all');
+  const [selectedFilter, setSelectedFilter] = useState('all'); // status filter
+  const [selectedSemester, setSelectedSemester] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedApplications, setSelectedApplications] = useState<number[]>([]);
+  const [selectedApplications, setSelectedApplications] = useState<string[]>([]);
+  const [applications, setApplications] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
+  const [lastKey, setLastKey] = useState<string | null>(null);
+  const [hasMore, setHasMore] = useState<boolean>(false);
 
-  // Mock student application data
-  const applications = [
-    {
-      id: 1,
-      studentName: 'Emily Chen',
-      email: 'emily.chen@umd.edu',
-      phone: '(301) 555-0123',
-      major: 'Computer Science',
-      graduationYear: 2025,
-      gpa: 3.85,
-      status: 'submitted',
-      submittedDate: '2024-10-15',
-      preferredHosts: ['Microsoft', 'Google', 'Apple'],
-      experience: ['Software Development Intern at Startup', 'CS Research Assistant'],
-      skills: ['Python', 'Java', 'React', 'Machine Learning'],
-      careerGoals: 'Software Engineering at a tech company',
-      whyIFAD: 'Want to gain industry experience and network with professionals',
-      availability: 'Nov 15 - Dec 15, 2024',
-      transportation: 'Has car',
-      previousIFAD: false,
-      rating: 4.2,
-      notes: 'Strong technical background, excellent communication skills'
-    },
-    {
-      id: 2,
-      studentName: 'Marcus Johnson',
-      email: 'marcus.j@umd.edu',
-      phone: '(240) 555-0456',
-      major: 'Business Administration',
-      graduationYear: 2026,
-      gpa: 3.72,
-      status: 'matched',
-      submittedDate: '2024-10-12',
-      matchedHost: 'Goldman Sachs - David Kim',
-      preferredHosts: ['Goldman Sachs', 'JP Morgan', 'Morgan Stanley'],
-      experience: ['Finance Club President', 'Investment Banking Workshop'],
-      skills: ['Financial Analysis', 'Excel', 'Bloomberg Terminal', 'Python'],
-      careerGoals: 'Investment Banking Analyst',
-      whyIFAD: 'Hands-on experience in financial services industry',
-      availability: 'Nov 20 - Dec 20, 2024',
-      transportation: 'Public transit',
-      previousIFAD: false,
-      rating: 4.5,
-      notes: 'High achiever, strong interest in finance'
-    },
-    {
-      id: 3,
-      studentName: 'Sofia Rodriguez',
-      email: 'sofia.r@umd.edu',
-      phone: '(202) 555-0789',
-      major: 'Marketing',
-      graduationYear: 2025,
-      gpa: 3.91,
-      status: 'under_review',
-      submittedDate: '2024-10-18',
-      preferredHosts: ['Nike', 'Coca-Cola', 'P&G'],
-      experience: ['Marketing Agency Intern', 'Social Media Manager for Student Org'],
-      skills: ['Digital Marketing', 'Adobe Creative Suite', 'Analytics', 'Content Creation'],
-      careerGoals: 'Brand Manager at consumer goods company',
-      whyIFAD: 'Learn about brand strategy and consumer insights',
-      availability: 'Nov 10 - Dec 10, 2024',
-      transportation: 'Has car',
-      previousIFAD: true,
-      rating: 4.7,
-      notes: 'Previous IFAD participant, excellent portfolio'
-    },
-    {
-      id: 4,
-      studentName: 'Alex Park',
-      email: 'alex.park@umd.edu',
-      phone: '(410) 555-0321',
-      major: 'Data Science',
-      graduationYear: 2025,
-      gpa: 3.68,
-      status: 'waitlisted',
-      submittedDate: '2024-10-20',
-      preferredHosts: ['Tesla', 'Netflix', 'Airbnb'],
-      experience: ['Data Analytics Intern', 'Machine Learning Research'],
-      skills: ['Python', 'R', 'SQL', 'Tableau', 'TensorFlow'],
-      careerGoals: 'Data Scientist in tech industry',
-      whyIFAD: 'Experience with real-world data problems',
-      availability: 'Nov 25 - Dec 25, 2024',
-      transportation: 'Public transit',
-      previousIFAD: false,
-      rating: 3.9,
-      notes: 'Strong technical skills, needs to improve presentation skills'
-    },
-    {
-      id: 5,
-      studentName: 'Rachel Kim',
-      email: 'rachel.kim@umd.edu',
-      phone: '(443) 555-0654',
-      major: 'Information Systems',
-      graduationYear: 2026,
-      gpa: 3.95,
-      status: 'rejected',
-      submittedDate: '2024-10-08',
-      preferredHosts: ['Deloitte', 'Accenture', 'McKinsey'],
-      experience: ['IT Consulting Project', 'Systems Analysis Intern'],
-      skills: ['Project Management', 'SQL', 'Business Analysis', 'Agile'],
-      careerGoals: 'IT Consultant',
-      whyIFAD: 'Understand consulting industry and client work',
-      availability: 'Nov 5 - Dec 5, 2024',
-      transportation: 'Has car',
-      previousIFAD: false,
-      rating: 4.8,
-      notes: 'Applied too late for this cycle, encourage for next semester'
+  // Load applications
+  const loadApplications = async (append = false) => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      const resp = await apiService.getAdminApplications({
+        semester: selectedSemester || undefined,
+        status: selectedFilter as any,
+        limit: 25,
+        lastKey: append ? lastKey || undefined : undefined,
+      });
+      if (resp.success) {
+        const newItems = resp.data.applications || [];
+        setApplications(prev => append ? [...prev, ...newItems] : newItems);
+        const nextKey = (resp.data as any).lastEvaluatedKey || null;
+        setLastKey(nextKey);
+        setHasMore(!!nextKey);
+      } else {
+        setApplications([]);
+        setError(resp.message || 'Failed to load applications');
+      }
+    } catch (e) {
+      console.error('Load applications failed', e);
+      setApplications([]);
+      setError('Failed to load applications');
+    } finally {
+      setIsLoading(false);
     }
-  ];
+  };
+
+  useEffect(() => {
+    loadApplications(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedFilter, selectedSemester]);
 
   const filterOptions = [
     { value: 'all', label: 'All Applications', count: applications.length },
@@ -135,9 +67,9 @@ const StudentApplications: React.FC = () => {
   const filteredApplications = applications.filter(app => {
     const matchesFilter = selectedFilter === 'all' || app.status === selectedFilter;
     const matchesSearch = searchQuery === '' || 
-      app.studentName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      app.major.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      app.email.toLowerCase().includes(searchQuery.toLowerCase());
+      (app.studentName && app.studentName.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (app.major && app.major.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (app.email && app.email.toLowerCase().includes(searchQuery.toLowerCase()));
     return matchesFilter && matchesSearch;
   });
 
@@ -164,7 +96,7 @@ const StudentApplications: React.FC = () => {
     return 'text-red-600';
   };
 
-  const handleSelectApplication = (appId: number) => {
+  const handleSelectApplication = (appId: string) => {
     setSelectedApplications(prev => 
       prev.includes(appId) 
         ? prev.filter(id => id !== appId)
@@ -176,11 +108,12 @@ const StudentApplications: React.FC = () => {
     if (selectedApplications.length === filteredApplications.length) {
       setSelectedApplications([]);
     } else {
-      setSelectedApplications(filteredApplications.map(a => a.id));
+      setSelectedApplications(filteredApplications.map(a => String(a.id)));
     }
   };
 
-  const averageGPA = applications.reduce((sum, app) => sum + app.gpa, 0) / applications.length;
+  const gpaValues = applications.map(a => a.gpa).filter((g: any) => typeof g === 'number');
+  const averageGPA = gpaValues.length > 0 ? gpaValues.reduce((s: number, g: number) => s + g, 0) / gpaValues.length : 0;
   const totalMatched = applications.filter(a => a.status === 'matched').length;
   const matchRate = (totalMatched / applications.length * 100).toFixed(1);
 
@@ -281,6 +214,18 @@ const StudentApplications: React.FC = () => {
                 className="pl-10 pr-4 py-2 border border-umd-gray-300 rounded-lg focus:ring-2 focus:ring-umd-red focus:border-transparent"
               />
             </div>
+            <select
+              value={selectedSemester}
+              onChange={(e) => {
+                setSelectedSemester(e.target.value);
+                setLastKey(null);
+              }}
+              className="px-3 py-2 border border-umd-gray-300 rounded-lg focus:ring-2 focus:ring-umd-red focus:border-transparent"
+            >
+              <option value="">All Semesters</option>
+              <option value="Spring 2025">Spring 2025</option>
+              <option value="Fall 2024">Fall 2024</option>
+            </select>
             <Button variant="outline" icon={Filter}>Advanced Filter</Button>
           </div>
         </div>
@@ -308,9 +253,9 @@ const StudentApplications: React.FC = () => {
             <thead>
               <tr className="border-b border-umd-gray-200">
                 <th className="px-4 py-3 text-left">
-                  <input
+                   <input
                     type="checkbox"
-                    checked={selectedApplications.length === filteredApplications.length && filteredApplications.length > 0}
+                     checked={selectedApplications.length === filteredApplications.length && filteredApplications.length > 0}
                     onChange={handleSelectAll}
                     className="rounded border-umd-gray-300 text-umd-red focus:ring-umd-red"
                   />
@@ -331,22 +276,22 @@ const StudentApplications: React.FC = () => {
                   <td className="px-4 py-3">
                     <input
                       type="checkbox"
-                      checked={selectedApplications.includes(app.id)}
-                      onChange={() => handleSelectApplication(app.id)}
+                      checked={selectedApplications.includes(String(app.id))}
+                      onChange={() => handleSelectApplication(String(app.id))}
                       className="rounded border-umd-gray-300 text-umd-red focus:ring-umd-red"
                     />
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center space-x-3">
                       <div className="w-10 h-10 bg-umd-red text-white rounded-full flex items-center justify-center font-medium">
-                        {app.studentName.split(' ').map(n => n[0]).join('')}
+                        {(app.studentName || 'S').split(' ').map((n: string) => n[0]).join('')}
                       </div>
                       <div>
-                        <p className="font-medium text-umd-black">{app.studentName}</p>
-                        <p className="text-sm text-umd-gray-600">{app.email}</p>
+                        <p className="font-medium text-umd-black">{app.studentName || app.name || 'Student'}</p>
+                        <p className="text-sm text-umd-gray-600">{app.email || '—'}</p>
                         <div className="flex items-center space-x-2 mt-1">
                           <GraduationCap className="w-3 h-3 text-umd-gray-400" />
-                          <span className="text-xs text-umd-gray-500">Class of {app.graduationYear}</span>
+                          <span className="text-xs text-umd-gray-500">{app.graduationYear ? `Class of ${app.graduationYear}` : '—'}</span>
                           {app.previousIFAD && (
                             <Badge variant="secondary" size="sm">Returning</Badge>
                           )}
@@ -357,28 +302,28 @@ const StudentApplications: React.FC = () => {
                   <td className="px-4 py-3">
                     <div className="flex items-center space-x-2">
                       <BookOpen className="w-4 h-4 text-umd-gray-400" />
-                      <span className="text-sm text-umd-black">{app.major}</span>
+                      <span className="text-sm text-umd-black">{app.major || '—'}</span>
                     </div>
                   </td>
                   <td className="px-4 py-3">
-                    <span className={`text-sm font-medium ${getGPAColor(app.gpa)}`}>
-                      {app.gpa.toFixed(2)}
+                    <span className={`text-sm font-medium ${getGPAColor(app.gpa || 0)}`}>
+                      {typeof app.gpa === 'number' ? app.gpa.toFixed(2) : '—'}
                     </span>
                   </td>
                   <td className="px-4 py-3">
-                    {getStatusBadge(app.status)}
+                    {getStatusBadge(app.status || 'submitted')}
                     {app.status === 'matched' && app.matchedHost && (
                       <p className="text-xs text-green-600 mt-1">{app.matchedHost}</p>
                     )}
                   </td>
                   <td className="px-4 py-3">
                     <div className="space-y-1">
-                      {app.preferredHosts.slice(0, 2).map((host, index) => (
+                      {(app.preferredHosts || []).slice(0, 2).map((host: string, index: number) => (
                         <div key={index} className="text-xs text-umd-gray-600">
                           {index + 1}. {host}
                         </div>
                       ))}
-                      {app.preferredHosts.length > 2 && (
+                      {Array.isArray(app.preferredHosts) && app.preferredHosts.length > 2 && (
                         <div className="text-xs text-umd-gray-400">
                           +{app.preferredHosts.length - 2} more
                         </div>
@@ -388,11 +333,11 @@ const StudentApplications: React.FC = () => {
                   <td className="px-4 py-3">
                     <div className="flex items-center space-x-1">
                       <Star className="w-4 h-4 text-umd-gold fill-current" />
-                      <span className="text-sm text-umd-black">{app.rating}</span>
+                      <span className="text-sm text-umd-black">{app.rating ?? '—'}</span>
                     </div>
                   </td>
                   <td className="px-4 py-3">
-                    <span className="text-sm text-umd-black">{app.submittedDate}</span>
+                    <span className="text-sm text-umd-black">{app.submittedDate || app.createdAt || '—'}</span>
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center space-x-2">
@@ -413,6 +358,11 @@ const StudentApplications: React.FC = () => {
             </tbody>
           </table>
         </div>
+        {hasMore && (
+          <div className="p-4 flex justify-center">
+            <Button variant="outline" onClick={() => loadApplications(true)} disabled={isLoading}>Load More</Button>
+          </div>
+        )}
         
         {filteredApplications.length === 0 && (
           <div className="text-center py-12">

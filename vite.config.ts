@@ -1,19 +1,18 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
-export default defineConfig(({ command }) => {
-  const base = command === 'serve' ? '/' : '/ifad_portal/';
-  
+export default defineConfig(({ mode }) => {
   return {
     plugins: [react()],
-    base, // '/' for dev server, '/ifad_portal/' for build
+    base: '/', // AWS hosting - no base path needed
     optimizeDeps: {
       exclude: ['lucide-react'],
     },
+    // Use .env files for VITE_API_URL; do not override here
     build: {
-      outDir: 'docs',
+      outDir: 'dist', // Standard output directory for AWS
       assetsDir: 'assets',
-      sourcemap: true,
+      sourcemap: mode !== 'production',
     },
   };
 });

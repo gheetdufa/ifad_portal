@@ -1,6 +1,13 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 
-const { response, db, auth, validate, transform } = require('/opt/nodejs/utils');
+// Use shared utilities from Lambda layer
+let utils;
+try { 
+  utils = require('/opt/nodejs/utils'); 
+} catch { 
+  utils = require('../../layers/shared/nodejs/utils'); 
+}
+const { response, db, auth, validate, transform, helpers } = utils;
 
 const TABLE_NAME = process.env.TABLE_NAME!;
 
@@ -12,8 +19,14 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
     const body = event.body ? JSON.parse(event.body) : {};
     const queryStringParameters = event.queryStringParameters || {};
 
-    console.log(`Processing ${method} ${path}`, { pathParameters, queryStringParameters });
+    console.log(`Admin handler processing ${method} ${path}`, {
+      pathParameters,
+      queryStringParameters,
+      table: TABLE_NAME,
+      region: process.env.AWS_REGION || 'us-east-1'
+    });
 
+    // Get current user and verify admin access
     const currentUser = await auth.getUserFromToken(event);
 
     // All admin endpoints require admin role
@@ -61,10 +74,13 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
   }
 };
 
+/**
+ * Get admin settings for a specific semester
+ */
 async function handleGetSettings(queryParams: any): Promise<APIGatewayProxyResult> {
   try {
     const { semester } = queryParams;
-    const currentSemester = semester || getCurrentSemester();
+    const currentSemester = semester || helpers.getCurrentSemester();
 
     const settings = await db.query({
       TableName: TABLE_NAME,
@@ -90,6 +106,9 @@ async function handleGetSettings(queryParams: any): Promise<APIGatewayProxyResul
   }
 }
 
+/**
+ * Update or create admin setting
+ */
 async function handleUpdateSetting(body: any): Promise<APIGatewayProxyResult> {
   try {
     const { key, value, semester } = body;
@@ -97,7 +116,7 @@ async function handleUpdateSetting(body: any): Promise<APIGatewayProxyResult> {
     validate.required(key, 'Setting key');
     validate.required(value, 'Setting value');
 
-    const currentSemester = semester || getCurrentSemester();
+    const currentSemester = semester || helpers.getCurrentSemester();
     const setting = transform.settingToDynamoItem(key, value, currentSemester);
 
     await db.put({
@@ -117,15 +136,35 @@ async function handleUpdateSetting(body: any): Promise<APIGatewayProxyResult> {
   }
 }
 
+/**
+ * Get comprehensive system statistics
+ */
 async function handleGetStats(queryParams: any): Promise<APIGatewayProxyResult> {
   try {
     const { semester } = queryParams;
-    const currentSemester = semester || getCurrentSemester();
+    const currentSemester = semester || helpers.getCurrentSemester();
 
     // Get user counts by role
     const studentCount = await getCountByRole('student');
     const hostCount = await getCountByRole('host');
     const adminCount = await getCountByRole('admin');
+
+    // Get host status breakdown
+    const allHosts = await db.query({
+      TableName: TABLE_NAME,
+      IndexName: 'GSI2',
+      KeyConditionExpression: 'GSI2PK = :role',
+      ExpressionAttributeValues: {
+        ':role': 'ROLE#host',
+      },
+    });
+
+    const hostStats = {
+      total: allHosts.length,
+      pending: allHosts.filter((h: any) => h.status === 'pending').length,
+      approved: allHosts.filter((h: any) => h.status === 'approved').length,
+      rejected: allHosts.filter((h: any) => h.status === 'rejected').length,
+    };
 
     // Get application stats for the semester
     const applications = await db.query({
@@ -146,7 +185,7 @@ async function handleGetStats(queryParams: any): Promise<APIGatewayProxyResult> 
     };
 
     // Get match stats
-    const matches = await db.query({
+    const matches = await db.scan({
       TableName: TABLE_NAME,
       FilterExpression: 'begins_with(PK, :matchPrefix) AND semester = :semester',
       ExpressionAttributeValues: {
@@ -169,6 +208,7 @@ async function handleGetStats(queryParams: any): Promise<APIGatewayProxyResult> 
         admins: adminCount,
         total: studentCount + hostCount + adminCount,
       },
+      hosts: hostStats,
       applications: applicationStats,
       matches: matchStats,
       lastUpdated: new Date().toISOString(),
@@ -179,6 +219,9 @@ async function handleGetStats(queryParams: any): Promise<APIGatewayProxyResult> 
   }
 }
 
+/**
+ * Get count of users by role
+ */
 async function getCountByRole(role: string): Promise<number> {
   try {
     const users = await db.query({
@@ -188,48 +231,62 @@ async function getCountByRole(role: string): Promise<number> {
       ExpressionAttributeValues: {
         ':role': `ROLE#${role}`,
       },
-      Select: 'COUNT',
     });
-
-    return users.length || 0;
+    return (users || []).length || 0;
   } catch (error) {
     console.error(`Error getting count for role ${role}:`, error);
     return 0;
   }
 }
 
+/**
+ * Get all users (primarily for host management)
+ * With proper field mapping for frontend compatibility
+ */
 async function handleGetAllUsers(queryParams: any): Promise<APIGatewayProxyResult> {
   try {
-    const { role, limit = '100', lastEvaluatedKey } = queryParams;
+    const { role, limit = '100', lastEvaluatedKey, status } = queryParams;
 
-    let params: any = {
+    // Default to hosts if role not specified
+    const effectiveRole = role && ['student', 'host', 'admin'].includes(role) ? role : 'host';
+
+    console.log(`Getting users with role: ${effectiveRole}, status: ${status}`);
+
+    const params: any = {
       TableName: TABLE_NAME,
+      IndexName: 'GSI2',
+      KeyConditionExpression: 'GSI2PK = :role',
+      ExpressionAttributeValues: {
+        ':role': `ROLE#${effectiveRole}`,
+      },
       Limit: parseInt(limit),
     };
 
-    if (role && ['student', 'host', 'admin'].includes(role)) {
-      params.IndexName = 'GSI2';
-      params.KeyConditionExpression = 'GSI2PK = :role';
-      params.ExpressionAttributeValues = {
-        ':role': `ROLE#${role}`,
-      };
-    } else {
-      params.FilterExpression = 'begins_with(PK, :userPrefix)';
-      params.ExpressionAttributeValues = {
-        ':userPrefix': 'USER#',
-      };
+    // Add status filter if specified
+    if (status && status !== 'all') {
+      params.FilterExpression = '#status = :status';
+      params.ExpressionAttributeNames = { '#status': 'status' };
+      params.ExpressionAttributeValues[':status'] = status;
     }
 
     if (lastEvaluatedKey) {
       params.ExclusiveStartKey = JSON.parse(decodeURIComponent(lastEvaluatedKey));
     }
 
-    const users = await db.query(params);
+    const result = await db.query(params);
+    const users = result || [];
+
+    console.log(`Found ${users.length} users with role ${effectiveRole}`);
+
+    // Map users to the format expected by frontend
+    const hosts = users.map((u: any) => helpers.formatHostForFrontend(u));
 
     return response.success({
-      users,
-      count: users.length,
-      lastEvaluatedKey: params.LastEvaluatedKey ? encodeURIComponent(JSON.stringify(params.LastEvaluatedKey)) : null,
+      hosts,
+      count: hosts.length,
+      totalCount: users.length,
+      role: effectiveRole,
+      lastEvaluatedKey: result.LastEvaluatedKey ? encodeURIComponent(JSON.stringify(result.LastEvaluatedKey)) : null,
     });
   } catch (error) {
     console.error('Get all users error:', error);
@@ -237,8 +294,14 @@ async function handleGetAllUsers(queryParams: any): Promise<APIGatewayProxyResul
   }
 }
 
+/**
+ * Update user profile and status (primary host approval function)
+ */
 async function handleUpdateUser(userId: string, body: any): Promise<APIGatewayProxyResult> {
   try {
+    console.log(`Updating user ${userId} with data:`, body);
+
+    // Get existing user profile
     const userProfile = await db.get({
       TableName: TABLE_NAME,
       Key: {
@@ -251,26 +314,54 @@ async function handleUpdateUser(userId: string, body: any): Promise<APIGatewayPr
       return response.error('User not found', 404);
     }
 
+    // Extract update data, excluding DynamoDB keys
     const { userId: _, PK, SK, GSI1PK, GSI1SK, GSI2PK, GSI2SK, createdAt, ...updateData } = body;
 
+    // Special handling for status updates (host approval/rejection)
+    if (updateData.status) {
+      validate.status(updateData.status);
+      
+      // Set verified flag based on approval status
+      if (updateData.status === 'approved') {
+        updateData.verified = true;
+        console.log(`Approving host ${userId} - setting verified=true`);
+      } else if (updateData.status === 'rejected') {
+        updateData.verified = false;
+        console.log(`Rejecting host ${userId} - setting verified=false`);
+      }
+    }
+
+    // Create updated profile
     const updatedProfile = {
       ...userProfile,
       ...updateData,
       updatedAt: new Date().toISOString(),
     };
 
+    // Save updated profile
     await db.put({
       TableName: TABLE_NAME,
       Item: updatedProfile,
     });
 
-    return response.success(updatedProfile);
+    console.log(`Successfully updated user ${userId} profile`);
+
+    // Format response for frontend
+    const formattedUser = helpers.formatHostForFrontend(updatedProfile);
+
+    return response.success({
+      message: `User ${updateData.status ? 'status updated' : 'updated'} successfully`,
+      user: formattedUser,
+    });
   } catch (error) {
     console.error('Update user error:', error);
     return response.error('Failed to update user', 500);
   }
 }
 
+/**
+ * Delete user (with proper cleanup)
+ */
 async function handleDeleteUser(userId: string): Promise<APIGatewayProxyResult> {
   try {
     // Check if user exists
@@ -286,6 +377,8 @@ async function handleDeleteUser(userId: string): Promise<APIGatewayProxyResult> 
       return response.error('User not found', 404);
     }
 
+    console.log(`Deleting user ${userId} (${userProfile.email})`);
+
     // Delete user profile
     await db.delete({
       TableName: TABLE_NAME,
@@ -295,10 +388,11 @@ async function handleDeleteUser(userId: string): Promise<APIGatewayProxyResult> 
       },
     });
 
-    // Note: In a production system, you might want to:
-    // 1. Archive the user data instead of deleting
+    // TODO: In production, also consider:
+    // 1. Archive user data instead of deleting
     // 2. Handle related records (applications, matches, etc.)
     // 3. Remove user from Cognito User Pool
+    // 4. Send notification emails
 
     return response.success({
       message: 'User deleted successfully',
@@ -310,6 +404,9 @@ async function handleDeleteUser(userId: string): Promise<APIGatewayProxyResult> 
   }
 }
 
+/**
+ * Get all applications with filtering
+ */
 async function handleGetAllApplications(queryParams: any): Promise<APIGatewayProxyResult> {
   try {
     const { semester, status, limit = '100', lastEvaluatedKey } = queryParams;
@@ -362,6 +459,9 @@ async function handleGetAllApplications(queryParams: any): Promise<APIGatewayPro
   }
 }
 
+/**
+ * Get all matches with filtering
+ */
 async function handleGetAllMatches(queryParams: any): Promise<APIGatewayProxyResult> {
   try {
     const { semester, status, limit = '100', lastEvaluatedKey } = queryParams;
@@ -390,7 +490,7 @@ async function handleGetAllMatches(queryParams: any): Promise<APIGatewayProxyRes
       params.ExclusiveStartKey = JSON.parse(decodeURIComponent(lastEvaluatedKey));
     }
 
-    const matches = await db.query(params);
+    const matches = await db.scan(params);
 
     return response.success({
       matches,
@@ -403,6 +503,9 @@ async function handleGetAllMatches(queryParams: any): Promise<APIGatewayProxyRes
   }
 }
 
+/**
+ * Export data (users, applications, matches, settings)
+ */
 async function handleExportData(body: any): Promise<APIGatewayProxyResult> {
   try {
     const { dataType, semester, format = 'json' } = body;
@@ -421,7 +524,7 @@ async function handleExportData(body: any): Promise<APIGatewayProxyResult> {
 
     switch (dataType) {
       case 'users':
-        data = await db.query({
+        data = await db.scan({
           TableName: TABLE_NAME,
           FilterExpression: 'begins_with(PK, :prefix)',
           ExpressionAttributeValues: { ':prefix': 'USER#' },
@@ -437,7 +540,7 @@ async function handleExportData(body: any): Promise<APIGatewayProxyResult> {
             ExpressionAttributeValues: { ':semester': `SEMESTER#${semester}` },
           });
         } else {
-          data = await db.query({
+          data = await db.scan({
             TableName: TABLE_NAME,
             FilterExpression: 'begins_with(PK, :prefix)',
             ExpressionAttributeValues: { ':prefix': 'APPLICATION#' },
@@ -446,7 +549,7 @@ async function handleExportData(body: any): Promise<APIGatewayProxyResult> {
         break;
       
       case 'matches':
-        data = await db.query({
+        data = await db.scan({
           TableName: TABLE_NAME,
           FilterExpression: 'begins_with(PK, :prefix)',
           ExpressionAttributeValues: { ':prefix': 'MATCH#' },
@@ -479,6 +582,9 @@ async function handleExportData(body: any): Promise<APIGatewayProxyResult> {
   }
 }
 
+/**
+ * Bulk import data (users, hosts, settings)
+ */
 async function handleBulkImport(body: any): Promise<APIGatewayProxyResult> {
   try {
     const { dataType, data, options = {} } = body;
@@ -532,20 +638,5 @@ async function handleBulkImport(body: any): Promise<APIGatewayProxyResult> {
   } catch (error) {
     console.error('Bulk import error:', error);
     return response.error('Failed to import data', 500);
-  }
-}
-
-function getCurrentSemester(): string {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = now.getMonth() + 1; // JavaScript months are 0-based
-  
-  // Determine semester based on month
-  if (month >= 1 && month <= 5) {
-    return `Spring${year}`;
-  } else if (month >= 6 && month <= 8) {
-    return `Summer${year}`;
-  } else {
-    return `Fall${year}`;
   }
 }

@@ -1,8 +1,15 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
-import { CognitoIdentityProviderClient, SignUpCommand, InitiateAuthCommand, AdminConfirmSignUpCommand, AdminAddUserToGroupCommand } from '@aws-sdk/client-cognito-identity-provider';
+import { CognitoIdentityProviderClient, InitiateAuthCommand, AdminAddUserToGroupCommand, AdminCreateUserCommand, AdminSetUserPasswordCommand } from '@aws-sdk/client-cognito-identity-provider';
 import { v4 as uuidv4 } from 'uuid';
 
-const { response, db, transform, validate } = require('/opt/nodejs/utils');
+// Use shared utilities from Lambda layer
+let utils;
+try { 
+  utils = require('/opt/nodejs/utils'); 
+} catch { 
+  utils = require('../../layers/shared/nodejs/utils'); 
+}
+const { response, db, validate, transform, helpers } = utils;
 
 const cognito = new CognitoIdentityProviderClient({ region: process.env.AWS_REGION || 'us-east-1' });
 const TABLE_NAME = process.env.TABLE_NAME!;
@@ -15,7 +22,13 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
     const method = event.httpMethod;
     const body = event.body ? JSON.parse(event.body) : {};
 
-    console.log(`Processing ${method} ${path}`, { body: body ? 'present' : 'none' });
+    console.log(`Auth handler processing ${method} ${path}`, { 
+      email: body.email, 
+      role: body.role,
+      hasPassword: !!body.password,
+      table: TABLE_NAME,
+      region: process.env.AWS_REGION || 'us-east-1'
+    });
 
     switch (true) {
       case path.includes('/auth/register') && method === 'POST':
@@ -36,50 +49,80 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
   }
 };
 
+/**
+ * Handle user registration with complete profile creation
+ * Supports host registration with full profile data
+ */
 async function handleRegister(body: any): Promise<APIGatewayProxyResult> {
   try {
     const { email, password, firstName, lastName, role = 'student', ...additionalData } = body;
 
-    // Validate required fields
+    console.log(`Registration attempt for ${email} with role ${role}`);
+
+    // Basic validation
     validate.required(email, 'Email');
+    validate.email(email);
     validate.required(password, 'Password');
+    validate.password(password);
     validate.required(firstName, 'First name');
     validate.required(lastName, 'Last name');
+    validate.role(role);
 
-    if (!validate.email(email)) {
-      return response.error('Invalid email format');
+    // Host-specific validation
+    if (role === 'host') {
+      validate.hostRegistration({
+        email, password, firstName, lastName,
+        jobTitle: additionalData.jobTitle,
+        organization: additionalData.organization,
+        workLocation: additionalData.workLocation,
+        workPhone: additionalData.workPhone,
+        careerFields: additionalData.careerFields
+      });
     }
 
-    if (password.length < 8) {
-      return response.error('Password must be at least 8 characters long');
+    // Check if user already exists
+    const existingUser = await db.query({
+      TableName: TABLE_NAME,
+      IndexName: 'GSI1',
+      KeyConditionExpression: 'GSI1PK = :email',
+      ExpressionAttributeValues: {
+        ':email': `EMAIL#${email}`,
+      },
+    });
+
+    if (existingUser && existingUser.length > 0) {
+      return response.error('User with this email already exists', 409);
     }
 
-    const validRoles = ['student', 'host', 'admin'];
-    if (!validRoles.includes(role)) {
-      return response.error('Invalid role');
-    }
-
-    // Create user in Cognito
-    const signUpCommand = new SignUpCommand({
-      ClientId: USER_POOL_CLIENT_ID,
+    // Create user in Cognito User Pool
+    const createUserCommand = new AdminCreateUserCommand({
+      UserPoolId: USER_POOL_ID,
       Username: email,
-      Password: password,
+      MessageAction: 'SUPPRESS', // Skip email verification for smoother UX
       UserAttributes: [
         { Name: 'email', Value: email },
+        { Name: 'email_verified', Value: 'true' },
         { Name: 'given_name', Value: firstName },
         { Name: 'family_name', Value: lastName },
       ],
     });
 
-    const signUpResult = await cognito.send(signUpCommand);
-    const userId = signUpResult.UserSub!;
+    console.log(`Creating Cognito user for ${email}`);
+    const createUserResult = await cognito.send(createUserCommand);
+    const userId = createUserResult.User?.Attributes?.find(a => a.Name === 'sub')?.Value;
 
-    // Auto-confirm user (in production, you might want email verification)
-    const confirmCommand = new AdminConfirmSignUpCommand({
+    if (!userId) {
+      throw new Error('Failed to get user ID from Cognito');
+    }
+
+    // Set permanent password
+    const setPwdCommand = new AdminSetUserPasswordCommand({
       UserPoolId: USER_POOL_ID,
       Username: email,
+      Password: password,
+      Permanent: true,
     });
-    await cognito.send(confirmCommand);
+    await cognito.send(setPwdCommand);
 
     // Add user to appropriate Cognito group
     const addToGroupCommand = new AdminAddUserToGroupCommand({
@@ -89,7 +132,9 @@ async function handleRegister(body: any): Promise<APIGatewayProxyResult> {
     });
     await cognito.send(addToGroupCommand);
 
-    // Create user profile in DynamoDB
+    console.log(`Added user ${email} to group ${role}`);
+
+    // Create comprehensive user profile in DynamoDB
     const userData = {
       userId,
       email,
@@ -99,17 +144,45 @@ async function handleRegister(body: any): Promise<APIGatewayProxyResult> {
     };
 
     const dynamoItem = transform.userToDynamoItem(userData, role);
-    
+    const redacted = { ...userData, password: userData?.password ? '***' : undefined };
+    console.log('Registering user profile in DynamoDB', {
+      table: TABLE_NAME,
+      keys: { PK: `USER#${userId}`, SK: 'PROFILE' },
+      gsi: { GSI1PK: `EMAIL#${email}`, GSI2PK: `ROLE#${role}` },
+      role,
+      preview: redacted
+    });
+
     await db.put({
       TableName: TABLE_NAME,
       Item: dynamoItem,
     });
+
+    console.log(`Created DynamoDB profile for user ${userId}`);
+
+    // Return appropriate response based on role
+    if (role === 'host') {
+      return response.success({
+        message: 'Host registration completed successfully! Your profile is pending admin approval. You will receive an email once approved.',
+        userId,
+        email,
+        role,
+        status: 'pending',
+        nextSteps: [
+          'Your registration has been submitted for review',
+          'Admin approval is required before you can access your dashboard',
+          'You will receive an email notification once approved',
+          'After approval, you can log in to register for semesters'
+        ]
+      }, 201);
+    }
 
     return response.success({
       message: 'User registered successfully',
       userId,
       email,
       role,
+      status: role === 'admin' ? 'approved' : 'pending'
     }, 201);
 
   } catch (error: any) {
@@ -119,17 +192,29 @@ async function handleRegister(body: any): Promise<APIGatewayProxyResult> {
       return response.error('User with this email already exists', 409);
     }
     
-    return response.error('Registration failed', 400, error.message);
+    if (error.name === 'InvalidParameterException') {
+      return response.error('Invalid registration data: ' + error.message, 400);
+    }
+    
+    return response.error('Registration failed', 500, error.message);
   }
 }
 
+/**
+ * Handle user login with role-based access control
+ * Returns user profile and authorization token
+ */
 async function handleLogin(body: any): Promise<APIGatewayProxyResult> {
   try {
     const { email, password } = body;
 
     validate.required(email, 'Email');
+    validate.email(email);
     validate.required(password, 'Password');
 
+    console.log(`Login attempt for ${email}`);
+
+    // Authenticate with Cognito
     const authCommand = new InitiateAuthCommand({
       ClientId: USER_POOL_CLIENT_ID,
       AuthFlow: 'USER_PASSWORD_AUTH',
@@ -148,7 +233,7 @@ async function handleLogin(body: any): Promise<APIGatewayProxyResult> {
     const { AccessToken, IdToken, RefreshToken } = authResult.AuthenticationResult;
 
     // Get user profile from DynamoDB
-    const userProfile = await db.query({
+    let userProfiles = await db.query({
       TableName: TABLE_NAME,
       IndexName: 'GSI1',
       KeyConditionExpression: 'GSI1PK = :email',
@@ -157,39 +242,111 @@ async function handleLogin(body: any): Promise<APIGatewayProxyResult> {
       },
     });
 
-    if (!userProfile || userProfile.length === 0) {
-      return response.error('User profile not found', 404);
+    // If user authenticated with Cognito but no profile exists yet, auto-provision a minimal profile
+    if (!userProfiles || userProfiles.length === 0) {
+      // Decode IdToken without verification to extract claims (groups, names)
+      const decodeJwt = (token: string) => {
+        try {
+          const parts = token.split('.');
+          if (parts.length < 2) return {};
+          const payload = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+          const padded = payload + '='.repeat((4 - (payload.length % 4)) % 4);
+          const json = Buffer.from(padded, 'base64').toString('utf8');
+          return JSON.parse(json);
+        } catch {
+          return {};
+        }
+      };
+
+      const claims: any = IdToken ? decodeJwt(IdToken) : {};
+      const groups: string[] = Array.isArray(claims['cognito:groups']) ? claims['cognito:groups'] : [];
+      const inferredRole = groups.includes('admin') ? 'admin' : groups.includes('host') ? 'host' : 'student';
+
+      const minimalUser = {
+        userId: claims['sub'] || uuidv4(),
+        email,
+        firstName: claims['given_name'] || claims['name'] || 'User',
+        lastName: claims['family_name'] || '',
+        role: inferredRole,
+        status: inferredRole === 'host' ? 'pending' : 'approved',
+        verified: inferredRole === 'admin' || inferredRole === 'student',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
+      const dynamoItem = transform.userToDynamoItem(minimalUser, inferredRole);
+      await db.put({
+        TableName: TABLE_NAME,
+        Item: dynamoItem,
+      });
+
+      // Re-query to load the profile in the expected format
+      userProfiles = await db.query({
+        TableName: TABLE_NAME,
+        IndexName: 'GSI1',
+        KeyConditionExpression: 'GSI1PK = :email',
+        ExpressionAttributeValues: {
+          ':email': `EMAIL#${email}`,
+        },
+      });
     }
 
-    const profile = userProfile[0];
+    const profile = userProfiles[0];
+
+    // Check if host is approved
+    if (profile.role === 'host' && profile.status === 'pending') {
+      return response.error('Your host application is still pending admin approval. Please wait for approval notification.', 403, {
+        status: 'pending_approval',
+        message: 'Host registration is under review'
+      });
+    }
+
+    if (profile.role === 'host' && profile.status === 'rejected') {
+      return response.error('Your host application was not approved. Please contact the administrator for more information.', 403, {
+        status: 'rejected',
+        message: 'Host registration was rejected'
+      });
+    }
+
+    console.log(`Successful login for ${email} with role ${profile.role}`);
 
     return response.success({
       message: 'Login successful',
-      tokens: {
-        accessToken: AccessToken,
-        idToken: IdToken,
-        refreshToken: RefreshToken,
-      },
+      token: AccessToken,
+      refreshToken: RefreshToken,
       user: {
+        id: profile.userId,
         userId: profile.userId,
         email: profile.email,
         firstName: profile.firstName,
         lastName: profile.lastName,
         role: profile.role,
+        status: profile.status,
+        verified: profile.verified,
+        jobTitle: profile.jobTitle,
+        organization: profile.organization,
       },
     });
 
   } catch (error: any) {
     console.error('Login error:', error);
     
-    if (error.name === 'NotAuthorizedException' || error.name === 'UserNotConfirmedException') {
-      return response.error('Invalid credentials or user not confirmed', 401);
+    if (error.name === 'NotAuthorizedException' || error.name === 'UserNotFoundException') {
+      return response.error('Invalid email or password', 401);
     }
     
-    return response.error('Login failed', 400, error.message);
+    if (error.name === 'UserNotConfirmedException') {
+      return response.error('Please confirm your account first', 401);
+    }
+    
+    return response.error('Login failed', 500, error.message);
   }
 }
 
+/**
+ * Handle signup confirmation (if email verification is enabled)
+ * Currently not used as we auto-confirm users
+ */
 async function handleConfirmSignUp(body: any): Promise<APIGatewayProxyResult> {
   try {
     const { email, confirmationCode } = body;
@@ -198,7 +355,7 @@ async function handleConfirmSignUp(body: any): Promise<APIGatewayProxyResult> {
     validate.required(confirmationCode, 'Confirmation code');
 
     // This would be used if email verification is enabled
-    // For now, we auto-confirm users during registration
+    // For now, we auto-confirm users during registration for better UX
     
     return response.success({
       message: 'User confirmed successfully',

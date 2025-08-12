@@ -6,6 +6,9 @@ import * as apigateway from 'aws-cdk-lib/aws-apigateway';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as nodejs from 'aws-cdk-lib/aws-lambda-nodejs';
 import * as s3 from 'aws-cdk-lib/aws-s3';
+import * as cloudfront from 'aws-cdk-lib/aws-cloudfront';
+import * as origins from 'aws-cdk-lib/aws-cloudfront-origins';
+import * as s3deploy from 'aws-cdk-lib/aws-s3-deployment';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as path from 'path';
 
@@ -18,6 +21,8 @@ export class IfadStack extends cdk.Stack {
   public readonly userPoolClient: cognito.UserPoolClient;
   public readonly api: apigateway.RestApi;
   public readonly dynamoTable: dynamodb.Table;
+  public readonly websiteBucket: s3.Bucket;
+  public readonly distribution: cloudfront.Distribution;
   private lambdaFunctions: { [key: string]: nodejs.NodejsFunction } = {};
   
   constructor(scope: Construct, id: string, props: IfadStackProps) {
@@ -68,7 +73,7 @@ export class IfadStack extends cdk.Stack {
       generateSecret: false,
       authFlows: {
         userSrp: true,
-        userPassword: false,
+        userPassword: true,
         adminUserPassword: true,
       },
       oAuth: {
@@ -112,12 +117,63 @@ export class IfadStack extends cdk.Stack {
       autoDeleteObjects: props.stage !== 'prod',
     });
 
-    // Lambda Layer for shared utilities
-    const sharedLayer = new lambda.LayerVersion(this, 'SharedLayer', {
-      code: lambda.Code.fromAsset(path.join(__dirname, '../lambda/layers/shared')),
-      compatibleRuntimes: [lambda.Runtime.NODEJS_18_X],
-      description: 'Shared utilities for IFAD Lambda functions',
+    // S3 Bucket for Website Hosting
+    this.websiteBucket = new s3.Bucket(this, 'IfadWebsiteBucket', {
+      bucketName: `ifad-website-${props.stage}-${this.account}`,
+      publicReadAccess: false, // CloudFront will handle access
+      blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
+      removalPolicy: props.stage === 'prod' ? cdk.RemovalPolicy.RETAIN : cdk.RemovalPolicy.DESTROY,
+      autoDeleteObjects: props.stage !== 'prod',
     });
+
+    // Origin Access Identity for CloudFront
+    const originAccessIdentity = new cloudfront.OriginAccessIdentity(this, 'IfadOAI', {
+      comment: `OAI for IFAD Portal ${props.stage}`,
+    });
+
+    // Grant CloudFront access to the S3 bucket
+    this.websiteBucket.grantRead(originAccessIdentity);
+
+    // CloudFront Distribution for Website
+    this.distribution = new cloudfront.Distribution(this, 'IfadWebsiteDistribution', {
+      defaultBehavior: {
+        origin: new origins.S3Origin(this.websiteBucket, {
+          originAccessIdentity,
+        }),
+        viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+        allowedMethods: cloudfront.AllowedMethods.ALLOW_GET_HEAD_OPTIONS,
+        cachedMethods: cloudfront.CachedMethods.CACHE_GET_HEAD_OPTIONS,
+        cachePolicy: cloudfront.CachePolicy.CACHING_OPTIMIZED,
+        compress: true,
+      },
+      defaultRootObject: 'index.html',
+      errorResponses: [
+        {
+          httpStatus: 404,
+          responseHttpStatus: 200,
+          responsePagePath: '/index.html',
+          ttl: cdk.Duration.seconds(0),
+        },
+        {
+          httpStatus: 403,
+          responseHttpStatus: 200,
+          responsePagePath: '/index.html',
+          ttl: cdk.Duration.seconds(0),
+        },
+      ],
+      priceClass: cloudfront.PriceClass.PRICE_CLASS_100, // US, Canada, Europe
+      comment: `IFAD Portal ${props.stage} Website Distribution`,
+    });
+
+    // Deploy website files to S3 (uncomment this when you want to deploy)
+    // new s3deploy.BucketDeployment(this, 'IfadWebsiteDeployment', {
+    //   sources: [s3deploy.Source.asset('../dist')],
+    //   destinationBucket: this.websiteBucket,
+    //   distribution: this.distribution,
+    //   distributionPaths: ['/*'],
+    // });
+
+    // No lambda layer needed - utilities are bundled directly
 
     // Lambda execution role
     const lambdaExecutionRole = new iam.Role(this, 'LambdaExecutionRole', {
@@ -154,7 +210,12 @@ export class IfadStack extends cdk.Stack {
                 'cognito-idp:AdminUpdateUserAttributes',
                 'cognito-idp:AdminAddUserToGroup',
                 'cognito-idp:AdminRemoveUserFromGroup',
+                'cognito-idp:AdminConfirmSignUp',
+                'cognito-idp:AdminCreateUser',
+                'cognito-idp:AdminSetUserPassword',
                 'cognito-idp:ListUsersInGroup',
+                'cognito-idp:SignUp',
+                'cognito-idp:InitiateAuth',
               ],
               resources: [this.userPool.userPoolArn],
             }),
@@ -183,16 +244,11 @@ export class IfadStack extends cdk.Stack {
       },
     });
 
-    // Cognito Authorizer
-    const cognitoAuthorizer = new apigateway.CognitoUserPoolsAuthorizer(this, 'CognitoAuthorizer', {
-      cognitoUserPools: [this.userPool],
-    });
-
     // Lambda functions will be created in separate methods
-    this.createLambdaFunctions(lambdaExecutionRole, sharedLayer, props.stage);
+    this.createLambdaFunctions(lambdaExecutionRole, props.stage);
     
     // API routes will be created after lambda functions
-    this.createApiRoutes(cognitoAuthorizer);
+    this.createApiRoutes();
 
     // Outputs
     new cdk.CfnOutput(this, 'UserPoolId', {
@@ -219,9 +275,29 @@ export class IfadStack extends cdk.Stack {
       value: this.dynamoTable.tableName,
       description: 'DynamoDB Table Name',
     });
+
+    new cdk.CfnOutput(this, 'WebsiteBucketName', {
+      value: this.websiteBucket.bucketName,
+      description: 'S3 Website Bucket Name',
+    });
+
+    new cdk.CfnOutput(this, 'CloudFrontDistributionId', {
+      value: this.distribution.distributionId,
+      description: 'CloudFront Distribution ID',
+    });
+
+    new cdk.CfnOutput(this, 'CloudFrontDomainName', {
+      value: this.distribution.distributionDomainName,
+      description: 'CloudFront Distribution Domain Name',
+    });
+
+    new cdk.CfnOutput(this, 'WebsiteUrl', {
+      value: `https://${this.distribution.distributionDomainName}`,
+      description: 'Website URL',
+    });
   }
 
-  private createLambdaFunctions(role: iam.Role, layer: lambda.LayerVersion, stage: string) {
+  private createLambdaFunctions(role: iam.Role, stage: string) {
     const environment = {
       TABLE_NAME: this.dynamoTable.tableName,
       USER_POOL_ID: this.userPool.userPoolId,
@@ -230,26 +306,18 @@ export class IfadStack extends cdk.Stack {
     };
 
     // Auth functions
-    this.lambdaFunctions.auth = this.createFunction('AuthHandler', 'auth', role, layer, environment);
-    
-    // User management functions
-    this.lambdaFunctions.users = this.createFunction('UserHandler', 'users', role, layer, environment);
-    
-    // Application functions
-    this.lambdaFunctions.applications = this.createFunction('ApplicationHandler', 'applications', role, layer, environment);
-    
-    // Admin functions
-    this.lambdaFunctions.admin = this.createFunction('AdminHandler', 'admin', role, layer, environment);
-    
-    // Public functions
-    this.lambdaFunctions.public = this.createFunction('PublicHandler', 'public', role, layer, environment);
+    this.lambdaFunctions.auth = this.createFunction('AuthHandler', 'auth', role, environment);
+    // Core application functions
+    this.lambdaFunctions.users = this.createFunction('UserHandler', 'users', role, environment);
+    this.lambdaFunctions.applications = this.createFunction('ApplicationHandler', 'applications', role, environment);
+    this.lambdaFunctions.admin = this.createFunction('AdminHandler', 'admin', role, environment);
+    this.lambdaFunctions.public = this.createFunction('PublicHandler', 'public', role, environment);
   }
 
   private createFunction(
     functionName: string,
     handlerPath: string,
     role: iam.Role,
-    layer: lambda.LayerVersion,
     environment: Record<string, string>
   ): nodejs.NodejsFunction {
     return new nodejs.NodejsFunction(this, functionName, {
@@ -257,7 +325,6 @@ export class IfadStack extends cdk.Stack {
       handler: 'handler',
       runtime: lambda.Runtime.NODEJS_18_X,
       role,
-      layers: [layer],
       environment,
       timeout: cdk.Duration.seconds(30),
       bundling: {
@@ -267,7 +334,7 @@ export class IfadStack extends cdk.Stack {
     });
   }
 
-  private createApiRoutes(authorizer: apigateway.CognitoUserPoolsAuthorizer) {
+  private createApiRoutes() {
     // Auth routes (no auth required)
     const authResource = this.api.root.addResource('auth');
     const loginResource = authResource.addResource('login');
@@ -277,105 +344,45 @@ export class IfadStack extends cdk.Stack {
     loginResource.addMethod('POST', new apigateway.LambdaIntegration(this.lambdaFunctions.auth));
     registerResource.addMethod('POST', new apigateway.LambdaIntegration(this.lambdaFunctions.auth));
     confirmResource.addMethod('POST', new apigateway.LambdaIntegration(this.lambdaFunctions.auth));
-    
-    // Protected routes (auth required)
-    const usersResource = this.api.root.addResource('users');
-    const profileResource = usersResource.addResource('profile');
-    const searchResource = usersResource.addResource('search');
-    const hostsResource = usersResource.addResource('hosts');
-    const userIdResource = usersResource.addResource('{userId}');
-    
-    profileResource.addMethod('GET', new apigateway.LambdaIntegration(this.lambdaFunctions.users), {
-      authorizer,
-    });
-    profileResource.addMethod('PUT', new apigateway.LambdaIntegration(this.lambdaFunctions.users), {
-      authorizer,
-    });
-    searchResource.addMethod('GET', new apigateway.LambdaIntegration(this.lambdaFunctions.users), {
-      authorizer,
-    });
-    hostsResource.addMethod('GET', new apigateway.LambdaIntegration(this.lambdaFunctions.users), {
-      authorizer,
-    });
-    userIdResource.addMethod('GET', new apigateway.LambdaIntegration(this.lambdaFunctions.users), {
-      authorizer,
-    });
-    
-    // Applications routes
-    const applicationsResource = this.api.root.addResource('applications');
-    const applicationIdResource = applicationsResource.addResource('{applicationId}');
-    const reviewResource = applicationIdResource.addResource('review');
-    const matchResource = applicationIdResource.addResource('match');
-    
-    applicationsResource.addMethod('GET', new apigateway.LambdaIntegration(this.lambdaFunctions.applications), {
-      authorizer,
-    });
-    applicationsResource.addMethod('POST', new apigateway.LambdaIntegration(this.lambdaFunctions.applications), {
-      authorizer,
-    });
-    applicationIdResource.addMethod('GET', new apigateway.LambdaIntegration(this.lambdaFunctions.applications), {
-      authorizer,
-    });
-    applicationIdResource.addMethod('PUT', new apigateway.LambdaIntegration(this.lambdaFunctions.applications), {
-      authorizer,
-    });
-    reviewResource.addMethod('POST', new apigateway.LambdaIntegration(this.lambdaFunctions.applications), {
-      authorizer,
-    });
-    matchResource.addMethod('POST', new apigateway.LambdaIntegration(this.lambdaFunctions.applications), {
-      authorizer,
-    });
-    
-    // Admin routes
-    const adminResource = this.api.root.addResource('admin');
-    const settingsResource = adminResource.addResource('settings');
-    const statsResource = adminResource.addResource('stats');
-    const adminUsersResource = adminResource.addResource('users');
-    const adminUserIdResource = adminUsersResource.addResource('{userId}');
-    const adminApplicationsResource = adminResource.addResource('applications');
-    const matchesResource = adminResource.addResource('matches');
-    const exportResource = adminResource.addResource('export');
-    const bulkImportResource = adminResource.addResource('bulk-import');
-    
-    settingsResource.addMethod('GET', new apigateway.LambdaIntegration(this.lambdaFunctions.admin), {
-      authorizer,
-    });
-    settingsResource.addMethod('POST', new apigateway.LambdaIntegration(this.lambdaFunctions.admin), {
-      authorizer,
-    });
-    statsResource.addMethod('GET', new apigateway.LambdaIntegration(this.lambdaFunctions.admin), {
-      authorizer,
-    });
-    adminUsersResource.addMethod('GET', new apigateway.LambdaIntegration(this.lambdaFunctions.admin), {
-      authorizer,
-    });
-    adminUserIdResource.addMethod('PUT', new apigateway.LambdaIntegration(this.lambdaFunctions.admin), {
-      authorizer,
-    });
-    adminUserIdResource.addMethod('DELETE', new apigateway.LambdaIntegration(this.lambdaFunctions.admin), {
-      authorizer,
-    });
-    adminApplicationsResource.addMethod('GET', new apigateway.LambdaIntegration(this.lambdaFunctions.admin), {
-      authorizer,
-    });
-    matchesResource.addMethod('GET', new apigateway.LambdaIntegration(this.lambdaFunctions.admin), {
-      authorizer,
-    });
-    exportResource.addMethod('POST', new apigateway.LambdaIntegration(this.lambdaFunctions.admin), {
-      authorizer,
-    });
-    bulkImportResource.addMethod('POST', new apigateway.LambdaIntegration(this.lambdaFunctions.admin), {
-      authorizer,
-    });
-    
-    // Public routes (no auth required)
+
+    // Public routes
     const publicResource = this.api.root.addResource('public');
-    const publicHostsResource = publicResource.addResource('hosts');
-    const publicStatsResource = publicResource.addResource('stats');
-    const healthResource = publicResource.addResource('health');
-    
-    publicHostsResource.addMethod('GET', new apigateway.LambdaIntegration(this.lambdaFunctions.public));
-    publicStatsResource.addMethod('GET', new apigateway.LambdaIntegration(this.lambdaFunctions.public));
-    healthResource.addMethod('GET', new apigateway.LambdaIntegration(this.lambdaFunctions.public));
+    publicResource.addResource('hosts').addMethod('GET', new apigateway.LambdaIntegration(this.lambdaFunctions.public));
+    publicResource.addResource('stats').addMethod('GET', new apigateway.LambdaIntegration(this.lambdaFunctions.public));
+    publicResource.addResource('health').addMethod('GET', new apigateway.LambdaIntegration(this.lambdaFunctions.public));
+
+    // Users routes (auth required at function level)
+    const usersResource = this.api.root.addResource('users');
+    const profileRes = usersResource.addResource('profile');
+    profileRes.addMethod('GET', new apigateway.LambdaIntegration(this.lambdaFunctions.users));
+    profileRes.addMethod('PUT', new apigateway.LambdaIntegration(this.lambdaFunctions.users));
+    usersResource.addResource('search').addMethod('GET', new apigateway.LambdaIntegration(this.lambdaFunctions.users));
+    usersResource.addResource('hosts').addMethod('GET', new apigateway.LambdaIntegration(this.lambdaFunctions.users));
+    const userIdRes = usersResource.addResource('{userId}');
+    userIdRes.addMethod('GET', new apigateway.LambdaIntegration(this.lambdaFunctions.users));
+
+    const semesterReg = usersResource.addResource('semester-registration');
+    semesterReg.addMethod('GET', new apigateway.LambdaIntegration(this.lambdaFunctions.users));
+    semesterReg.addMethod('POST', new apigateway.LambdaIntegration(this.lambdaFunctions.users));
+    semesterReg.addMethod('PUT', new apigateway.LambdaIntegration(this.lambdaFunctions.users));
+
+    // Applications route (placeholder)
+    this.api.root.addResource('applications').addMethod('POST', new apigateway.LambdaIntegration(this.lambdaFunctions.applications));
+
+    // Admin routes (auth + admin check in function)
+    const adminResource = this.api.root.addResource('admin');
+    const settingsRes = adminResource.addResource('settings');
+    settingsRes.addMethod('GET', new apigateway.LambdaIntegration(this.lambdaFunctions.admin));
+    settingsRes.addMethod('POST', new apigateway.LambdaIntegration(this.lambdaFunctions.admin));
+    adminResource.addResource('stats').addMethod('GET', new apigateway.LambdaIntegration(this.lambdaFunctions.admin));
+    const adminUsersResource = adminResource.addResource('users');
+    adminUsersResource.addMethod('GET', new apigateway.LambdaIntegration(this.lambdaFunctions.admin));
+    const adminUserIdRes = adminUsersResource.addResource('{userId}');
+    adminUserIdRes.addMethod('PUT', new apigateway.LambdaIntegration(this.lambdaFunctions.admin));
+    adminUserIdRes.addMethod('DELETE', new apigateway.LambdaIntegration(this.lambdaFunctions.admin));
+    adminResource.addResource('applications').addMethod('GET', new apigateway.LambdaIntegration(this.lambdaFunctions.admin));
+    adminResource.addResource('matches').addMethod('GET', new apigateway.LambdaIntegration(this.lambdaFunctions.admin));
+    adminResource.addResource('export').addMethod('POST', new apigateway.LambdaIntegration(this.lambdaFunctions.admin));
+    adminResource.addResource('bulk-import').addMethod('POST', new apigateway.LambdaIntegration(this.lambdaFunctions.admin));
   }
 }
