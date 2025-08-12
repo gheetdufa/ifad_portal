@@ -35,7 +35,9 @@ export class IfadStack extends cdk.Stack {
       sortKey: { name: 'SK', type: dynamodb.AttributeType.STRING },
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
       removalPolicy: props.stage === 'prod' ? cdk.RemovalPolicy.RETAIN : cdk.RemovalPolicy.DESTROY,
-      pointInTimeRecovery: props.stage === 'prod',
+      pointInTimeRecoverySpecification: props.stage === 'prod'
+        ? { pointInTimeRecoveryEnabled: true }
+        : { pointInTimeRecoveryEnabled: false },
     });
 
     // Global Secondary Indexes
@@ -137,9 +139,8 @@ export class IfadStack extends cdk.Stack {
     // CloudFront Distribution for Website
     this.distribution = new cloudfront.Distribution(this, 'IfadWebsiteDistribution', {
       defaultBehavior: {
-        origin: new origins.S3Origin(this.websiteBucket, {
-          originAccessIdentity,
-        }),
+        // Use S3Origin for now to avoid breaking API; consider upgrading to S3BucketOrigin when available
+        origin: new origins.S3Origin(this.websiteBucket, { originAccessIdentity }),
         viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
         allowedMethods: cloudfront.AllowedMethods.ALLOW_GET_HEAD_OPTIONS,
         cachedMethods: cloudfront.CachedMethods.CACHE_GET_HEAD_OPTIONS,

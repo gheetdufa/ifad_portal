@@ -38,9 +38,10 @@ const LoginPage: React.FC = () => {
       console.log('[login] result user:', u);
       // Redirect immediately based on role to avoid bounce
       if (u) {
-        const dashboardPath = u.role === 'admin' ? '/admin' : u.role === 'host' ? '/host' : '/student';
-        console.log('[login] navigating to', dashboardPath);
-        navigate(dashboardPath, { replace: true });
+        const isHost = u.role === 'host';
+        const nextPath = isHost ? '/host/registration' : (u.role === 'admin' ? '/admin' : '/student');
+        console.log('[login] navigating to', nextPath);
+        navigate(nextPath, { replace: true });
         return;
       }
     } catch (error) {

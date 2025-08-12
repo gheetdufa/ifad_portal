@@ -699,6 +699,36 @@ class ApiService {
     }
   }
 
+  async updateProfile(updates: Record<string, any>): Promise<ApiResponse<any>> {
+    try {
+      if (!this.baseUrl) {
+        // Dev mode: merge into mock current host
+        const currentUserEmail = localStorage.getItem('ifad_current_user_email');
+        const hosts = JSON.parse(localStorage.getItem('ifad_mock_hosts') || '[]');
+        const idx = hosts.findIndex((h: any) => h.email === currentUserEmail || h.workEmail === currentUserEmail);
+        if (idx >= 0) {
+          hosts[idx] = { ...hosts[idx], ...updates, updatedAt: new Date().toISOString() };
+          localStorage.setItem('ifad_mock_hosts', JSON.stringify(hosts));
+          return { success: true, data: hosts[idx], message: 'Profile updated (dev mode)' };
+        }
+        return { success: false, data: null, message: 'No profile to update (dev mode)' };
+      }
+      const response = await fetch(`${this.baseUrl}/users/profile`, {
+        method: 'PUT',
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify(updates),
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result.message || 'Failed to update profile');
+      }
+      return { success: true, data: result.data || result, message: 'Profile updated successfully' };
+    } catch (error) {
+      console.error('Update profile error:', error);
+      return { success: false, data: null, message: error instanceof Error ? error.message : 'Failed to update profile' };
+    }
+  }
+
   async getSemesterRegistration(semester: string): Promise<ApiResponse<{registered: boolean, registration: SemesterRegistration | null}>> {
     try {
       if (!this.baseUrl) throw new Error('API URL not configured.');

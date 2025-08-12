@@ -2,6 +2,7 @@ import React, { useState, useCallback, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { Briefcase, Save, CheckCircle, Building, User, Mail, Phone, Globe, Target, MapPin, Search, X } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
+import { apiService } from '../../services/api';
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
@@ -10,7 +11,7 @@ import { searchCompanies, inferWebsiteFromCompany, getCompanyLogo, CompanyInfo, 
 import SmallerLogo from '../../assets/Smaller_logo.png';
 
 const HostRegistration: React.FC = () => {
-  const { register } = useAuth();
+  const { register, user } = useAuth();
 
   const [formData, setFormData] = useState({
     // Personal Information
@@ -201,12 +202,6 @@ const HostRegistration: React.FC = () => {
     
     // Required fields validation
     const requiredFields = {
-      firstName: 'First name',
-      lastName: 'Last name', 
-      workEmail: 'Work email',
-      password: 'Password',
-      confirmPassword: 'Confirm password',
-      preferredPhone: 'Phone number',
       aboutYou: 'About you',
       organization: 'Organization',
       jobTitle: 'Job title',
@@ -216,33 +211,12 @@ const HostRegistration: React.FC = () => {
       aboutWork: 'About your work',
       organizationDescription: 'Organization description',
       experienceDescription: 'Experience description'
-    };
+    } as const;
 
     for (const [field, label] of Object.entries(requiredFields)) {
       if (!formData[field as keyof typeof formData]) {
         errors[field] = `${label} is required`;
       }
-    }
-
-    // Password validation
-    if (formData.password && formData.password.length < 8) {
-      errors.password = 'Password must be at least 8 characters long';
-    }
-
-    if (formData.password && !/(?=.*[a-z])/.test(formData.password)) {
-      errors.password = 'Password must contain at least one lowercase letter';
-    }
-
-    if (formData.password && !/(?=.*[A-Z])/.test(formData.password)) {
-      errors.password = 'Password must contain at least one uppercase letter';
-    }
-
-    if (formData.password && !/(?=.*\d)/.test(formData.password)) {
-      errors.password = 'Password must contain at least one number';
-    }
-
-    if (formData.password !== formData.confirmPassword) {
-      errors.confirmPassword = 'Passwords do not match';
     }
 
     if (formData.careerFields.length === 0) {
@@ -253,7 +227,7 @@ const HostRegistration: React.FC = () => {
     
     if (Object.keys(errors).length > 0) {
       setError('Please correct the highlighted fields');
-      const firstErrorKey = Object.keys(requiredFields).find((k) => errors[k]);
+      const firstErrorKey = Object.keys(requiredFields).concat(['careerFields']).find((k) => errors[k]);
       if (firstErrorKey) {
         const el = document.getElementById(`field-${firstErrorKey}`);
         if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -275,20 +249,11 @@ const HostRegistration: React.FC = () => {
     setIsSubmitting(true);
 
     try {
-      // Prepare registration data
-      const registrationData = {
-        email: formData.workEmail,
-        password: formData.password,
-        firstName: formData.firstName,
-        lastName: formData.lastName,
-        role: 'host',
-        
-        // All host-specific fields
+      // Prepare profile update data (account already exists)
+      const updates = {
         preferredPrefix: formData.preferredPrefix || undefined,
-        workEmail: formData.workEmail,
-        preferredPhone: formData.preferredPhone,
-        // Map to backend-expected fields
-        workPhone: formData.preferredPhone,
+        preferredPhone: formData.preferredPhone || undefined,
+        workPhone: formData.preferredPhone || undefined,
         workLocation: `${formData.companyAddress}${formData.cityState ? ', ' + formData.cityState : ''}${formData.zipCode ? ' ' + formData.zipCode : ''}`,
         previousHostExperience: formData.previousHostExperience,
         isUmdParent: formData.isUmdParent,
@@ -301,13 +266,7 @@ const HostRegistration: React.FC = () => {
         zipCode: formData.zipCode,
         careerFields: formData.careerFields,
         careerFieldsOther: formData.careerFieldsOther || undefined,
-        // Semester-specific selections will be captured during semester registration
-        isDcMetroAccessible: undefined,
-        workLocationAccessibilityUnsure: undefined,
-        isPhysicalOffice: undefined,
         isFederalAgency: formData.isFederalAgency,
-        requiresCitizenship: undefined,
-        requiresBackgroundCheck: undefined,
         organizationDescription: formData.organizationDescription,
         experienceDescription: formData.experienceDescription,
         additionalInfo: formData.additionalInfo || undefined,
@@ -316,21 +275,13 @@ const HostRegistration: React.FC = () => {
           ...(formData.customReligion && { religion: formData.customReligion }),
           ...(formData.customOther && { other: formData.customOther }),
         },
-        
-        // Legacy fields for compatibility
-        industry: formData.careerFields[0] || 'Other',
-        bio: formData.organizationDescription,
-        experienceType: 'both',
-        location: 'both',
-        verified: false,
-      };
+        // Mark profile completed so dashboard can unlock
+        profileStage: 'complete',
+      } as Record<string, any>;
 
-      const redacted = { ...registrationData, password: registrationData.password ? '***' : undefined };
-      console.log('[host-form] submitting registration', {
-        apiUrl: import.meta.env.VITE_API_URL,
-        body: redacted
-      });
-      await register(registrationData);
+      console.log('[host-form] updating profile', { apiUrl: import.meta.env.VITE_API_URL, updates });
+      const resp = await apiService.updateProfile({ userId: user?.userId || user?.id, ...updates });
+      if (!resp.success) throw new Error(resp.message || 'Profile update failed');
       setIsSubmitted(true);
     } catch (err: any) {
       setError(err.message || 'Registration failed. Please try again.');
@@ -382,14 +333,14 @@ const HostRegistration: React.FC = () => {
               including registering for this semester's program.
             </p>
             <div className="space-y-2 text-sm md:text-base text-umd-gray-700 max-w-2xl mx-auto mb-8">
-              <p><strong>Note:</strong> You will register for the program each semester you want to participate.</p>
+              <p><strong>Next:</strong> You can register for this semester now or visit your dashboard.</p>
             </div>
             <div className="flex items-center justify-center gap-3 flex-wrap">
-            <Button variant="primary" className="bg-gradient-to-r from-umd-red to-red-600 hover:from-red-600 hover:to-red-700">
-              <Link to="/host">Go to Host Dashboard</Link>
-            </Button>
+              <Button variant="primary" className="bg-gradient-to-r from-umd-red to-red-600 hover:from-red-600 hover:to-red-700">
+                <Link to="/host/semester-registration">Register for Fall 2025</Link>
+              </Button>
               <Button variant="outline">
-                <Link to="/login">Go to Dashboard (login required)</Link>
+                <Link to="/host">Go to Host Dashboard</Link>
               </Button>
             </div>
           </Card>
@@ -477,124 +428,7 @@ const HostRegistration: React.FC = () => {
               )}
             </section>
 
-            {/* Basic Info */}
-            <section>
-              <h2 className="text-2xl font-bold text-umd-black mb-6">Basic Information</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    First & Last Name *
-                  </label>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                  <Input
-                        type="text"
-                        placeholder="First Name"
-                        value={formData.firstName}
-                        onChange={(e) => handleInputChange('firstName', e.target.value)}
-                    id="field-firstName"
-                    className={validationErrors.firstName ? 'border-red-500 focus:border-red-500' : ''}
-                        required
-                      />
-                      {validationErrors.firstName && (
-                        <p className="text-red-500 text-xs mt-1">{validationErrors.firstName}</p>
-                      )}
-                    </div>
-                    <div>
-                  <Input
-                        type="text"
-                        placeholder="Last Name"
-                        value={formData.lastName}
-                        onChange={(e) => handleInputChange('lastName', e.target.value)}
-                    id="field-lastName"
-                    className={validationErrors.lastName ? 'border-red-500 focus:border-red-500' : ''}
-                        required
-                      />
-                      {validationErrors.lastName && (
-                        <p className="text-red-500 text-xs mt-1">{validationErrors.lastName}</p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center space-x-1">
-                    <Mail className="w-4 h-4 text-gray-500" />
-                    <span>Work Email Address *</span>
-                  </label>
-                  <Input
-                    type="email"
-                    placeholder="your.email@company.com"
-                    value={formData.workEmail}
-                    onChange={(e) => handleInputChange('workEmail', e.target.value)}
-                    id="field-workEmail"
-                    className={validationErrors.workEmail ? 'border-red-500 focus:border-red-500' : ''}
-                    required
-                  />
-                  {validationErrors.workEmail && (
-                    <p className="text-red-500 text-xs mt-1">{validationErrors.workEmail}</p>
-                  )}
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Password *
-                  </label>
-                  <Input
-                    type="password"
-                    placeholder="Enter a secure password"
-                    value={formData.password}
-                    onChange={(e) => handleInputChange('password', e.target.value)}
-                    id="field-password"
-                    className={validationErrors.password ? 'border-red-500 focus:border-red-500' : ''}
-                    required
-                  />
-                  {validationErrors.password && (
-                    <p className="text-red-500 text-xs mt-1">{validationErrors.password}</p>
-                  )}
-                  <p className="text-xs text-gray-500 mt-1">
-                    Must be at least 8 characters with uppercase, lowercase, and number
-                  </p>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Confirm Password *
-                  </label>
-                  <Input
-                    type="password"
-                    placeholder="Confirm your password"
-                    value={formData.confirmPassword}
-                    onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
-                    id="field-confirmPassword"
-                    className={validationErrors.confirmPassword ? 'border-red-500 focus:border-red-500' : ''}
-                    required
-                  />
-                  {validationErrors.confirmPassword && (
-                    <p className="text-red-500 text-xs mt-1">{validationErrors.confirmPassword}</p>
-                  )}
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center space-x-1">
-                    <Phone className="w-4 h-4 text-gray-500" />
-                    <span>Preferred Phone Number *</span>
-                  </label>
-                  <Input
-                    type="tel"
-                    placeholder="(XXX) XXX-XXXX"
-                    value={formData.preferredPhone}
-                    onChange={(e) => handleInputChange('preferredPhone', e.target.value)}
-                    id="field-preferredPhone"
-                    className={validationErrors.preferredPhone ? 'border-red-500 focus:border-red-500' : ''}
-                    required
-                  />
-                  {validationErrors.preferredPhone && (
-                    <p className="text-red-500 text-xs mt-1">{validationErrors.preferredPhone}</p>
-                  )}
-                </div>
-              </div>
-            </section>
+            {/* Basic Info removed: account already created */}
 
             {/* About You (Internal only) */}
             <section>
@@ -1167,12 +1001,8 @@ const HostRegistration: React.FC = () => {
                 type="submit"
                 variant="primary"
                 size="lg"
-                disabled={isSubmitting || getFormProgress() < 70}
-                className={`px-12 py-4 text-lg font-bold transition-all duration-300 ${
-                  getFormProgress() < 70 
-                    ? 'opacity-60 cursor-not-allowed bg-gray-400' 
-                    : 'bg-gradient-to-r from-umd-red to-red-600 hover:from-red-600 hover:to-red-700 hover:scale-105 shadow-lg hover:shadow-xl'
-                }`}
+                disabled={isSubmitting}
+                className="px-12 py-4 text-lg font-bold bg-gradient-to-r from-umd-red to-red-600 hover:from-red-600 hover:to-red-700 hover:scale-105 transition-all duration-300 shadow-lg hover:shadow-xl"
                 icon={isSubmitting ? undefined : Save}
               >
                 {isSubmitting ? (
@@ -1180,8 +1010,6 @@ const HostRegistration: React.FC = () => {
                     <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
                     <span>Submitting...</span>
                   </div>
-                ) : getFormProgress() < 70 ? (
-                  `Complete form (${getFormProgress()}%)`
                 ) : (
                   'Submit Profile'
                 )}
@@ -1189,12 +1017,6 @@ const HostRegistration: React.FC = () => {
               
               <div className="mt-4 space-y-2">
                 <p className="text-sm text-gray-500">You can edit your profile later if needed.</p>
-                {getFormProgress() < 70 && (
-                  <p className="text-sm text-orange-600 flex items-center justify-center space-x-1">
-                    <span>⚠️</span>
-                    <span>Please complete at least 70% of the form to submit ({70 - getFormProgress()}% remaining)</span>
-                  </p>
-                )}
               </div>
             </div>
           </Card>

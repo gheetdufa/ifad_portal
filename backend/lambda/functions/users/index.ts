@@ -349,15 +349,8 @@ async function handleSemesterRegistration(currentUser: any, body: any): Promise<
       return response.error('Only hosts can register for semesters', 403);
     }
 
-    // Get host profile to check approval status
-    const hostProfile = await auth.getCurrentUserProfile({ headers: { authorization: `Bearer ${currentUser.token}` } }, TABLE_NAME);
-    
-    if (!hostProfile.verified || hostProfile.status !== 'approved') {
-      return response.error('Host must be approved before registering for semesters', 403, {
-        status: hostProfile.status,
-        message: 'Host approval required'
-      });
-    }
+    // Option 2: Allow hosts to register for semester before admin approval
+    // Approval will still be required later in the matching/visibility flow
 
     // Check if already registered for this semester
     const existingRegistration = await db.get({

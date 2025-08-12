@@ -10,7 +10,7 @@ import Badge from '../../components/ui/Badge';
 import { apiService } from '../../services/api';
 
 const HostDashboard: React.FC = () => {
-  const [profileStatus, setProfileStatus] = useState('pending'); // 'pending', 'approved', 'rejected'
+  const [profileStatus, setProfileStatus] = useState<'incomplete' | 'pending' | 'approved' | 'rejected'>('pending');
   const [registrationStatus, setRegistrationStatus] = useState('not_registered'); // 'not_registered', 'registered', 'pending'
   const [showOneTimeApproved, setShowOneTimeApproved] = useState(false);
   const [currentSemester] = useState('Fall 2025');
@@ -29,7 +29,9 @@ const HostDashboard: React.FC = () => {
       // Check if host profile is approved
       const profileResponse = await apiService.getProfile();
       if (profileResponse.success) {
-        const status = profileResponse.data.verified ? 'approved' : 'pending';
+        const isVerified = !!profileResponse.data.verified;
+        const stage = profileResponse.data.profileStage === 'incomplete' ? 'incomplete' : undefined;
+        const status: 'incomplete' | 'pending' | 'approved' = stage ? 'incomplete' : (isVerified ? 'approved' : 'pending');
         setProfileStatus(status);
         setProfile(profileResponse.data);
         if (status === 'approved') {
@@ -40,8 +42,8 @@ const HostDashboard: React.FC = () => {
           }
         }
         
-        // Only check registration if profile is approved
-        if (status === 'approved') {
+        // Check registration regardless of approval per updated policy
+        if (true) {
           try {
             const regResponse = await apiService.getSemesterRegistration(currentSemester);
             if (regResponse.success && regResponse.data.registered) {
@@ -173,36 +175,56 @@ const HostDashboard: React.FC = () => {
   };
 
   const renderProfilePendingView = () => (
-    <div className="text-center py-16">
-      <div className="w-24 h-24 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-6">
-        <Clock className="w-12 h-12 text-yellow-600" />
-      </div>
-      <h2 className="text-3xl font-bold text-gray-900 mb-4">Your Profile is Under Review</h2>
-      <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
-        Thank you for creating your IFAD host profile! Our admin team is currently reviewing your 
-        information to ensure you're ready to host UMD students.
-      </p>
-      <div className="bg-umd-gold/10 border border-umd-gold/40 rounded-lg p-6 max-w-2xl mx-auto mb-8">
-        <h3 className="text-lg font-semibold text-umd-black mb-3">What happens next?</h3>
-        <div className="space-y-2 text-left text-umd-black">
-          <p>✅ <strong>Step 1:</strong> Profile created (completed)</p>
-          <p>🔄 <strong>Step 2:</strong> Admin review (in progress)</p>
-          <p>⏳ <strong>Step 3:</strong> Semester registration (after approval)</p>
+    <div className="space-y-8 py-4">
+      <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-6 flex items-center justify-between">
+        <div className="flex items-center space-x-3">
+          <Clock className="w-6 h-6 text-yellow-600" />
+          <div>
+            <p className="font-semibold text-yellow-900">Your host profile is under review</p>
+            <p className="text-sm text-yellow-800">You can still update your profile and register for the semester</p>
+          </div>
         </div>
-      </div>
-      <p className="text-gray-500 mb-6">
-        You'll receive an email notification once your profile has been approved.
-      </p>
-      <div className="flex justify-center space-x-4">
         <Button variant="outline" onClick={handleRefresh} disabled={isRefreshing}>
           {isRefreshing ? <RefreshCw className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
           {isRefreshing ? 'Checking...' : 'Check Status'}
         </Button>
-        <Link to="/host/registration">
-          <Button variant="outline" icon={Edit}>
-            Edit Profile
-          </Button>
-        </Link>
+      </div>
+
+      <Card>
+        <h2 className="text-xl font-bold text-gray-900 mb-4">Quick actions</h2>
+        <div className="flex flex-wrap gap-3">
+          <Link to="/host/registration">
+            <Button variant="outline" icon={Edit}>Edit/Complete Profile</Button>
+          </Link>
+          <Link to="/host/semester-registration">
+            <Button variant="outline" icon={Calendar}>Register for {currentSemester}</Button>
+          </Link>
+        </div>
+      </Card>
+
+      {/* Dashboard grid with timeline and info */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 space-y-6">
+          <TimelineCard />
+        </div>
+        <div className="space-y-6">
+          <ProfileSummaryCard />
+          <ResourcesCard />
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderIncompleteProfileView = () => (
+    <div className="space-y-8 py-4">
+      <div className="bg-blue-50 border border-blue-200 rounded-xl p-6">
+        <h2 className="text-xl font-bold text-blue-900 mb-2">Complete your host profile to continue</h2>
+        <p className="text-sm text-blue-800">Please provide your organization, role, location, and experience details so students can learn about your site.</p>
+        <div className="mt-4">
+          <Link to="/host/registration">
+            <Button variant="primary" icon={Edit} className="bg-gradient-to-r from-umd-red to-red-600 hover:from-red-600 hover:to-red-700">Complete Profile</Button>
+          </Link>
+        </div>
       </div>
     </div>
   );
@@ -412,6 +434,7 @@ const HostDashboard: React.FC = () => {
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Card>
+          {profileStatus === 'incomplete' && renderIncompleteProfileView()}
           {profileStatus === 'pending' && renderProfilePendingView()}
           {profileStatus === 'approved' && showOneTimeApproved && registrationStatus === 'not_registered' && renderApprovedNotRegisteredView()}
           {profileStatus === 'approved' && !showOneTimeApproved && registrationStatus === 'not_registered' && renderApprovedBannerDashboard()}
