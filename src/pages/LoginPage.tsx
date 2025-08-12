@@ -199,7 +199,7 @@ const LoginPage: React.FC = () => {
                       icon={UserPlus}
                       className="w-full transform hover:scale-105 transition-all duration-300"
                     >
-                      <Link to="/register/host" className="block w-full">Register as Host</Link>
+                      <Link to="/login?type=host" className="block w-full">Create Host Account</Link>
                     </Button>
                   )}
                   {userType === 'admin' && (

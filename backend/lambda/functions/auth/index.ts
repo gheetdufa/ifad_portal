@@ -69,15 +69,25 @@ async function handleRegister(body: any): Promise<APIGatewayProxyResult> {
     validate.role(role);
 
     // Host-specific validation
+    // Option 2: allow minimal host account creation first, profile later
     if (role === 'host') {
-      validate.hostRegistration({
-        email, password, firstName, lastName,
-        jobTitle: additionalData.jobTitle,
-        organization: additionalData.organization,
-        workLocation: additionalData.workLocation,
-        workPhone: additionalData.workPhone,
-        careerFields: additionalData.careerFields
-      });
+      const hasFullHostProfile = !!(
+        additionalData.jobTitle &&
+        additionalData.organization &&
+        additionalData.workLocation &&
+        additionalData.workPhone &&
+        additionalData.careerFields && Array.isArray(additionalData.careerFields) && additionalData.careerFields.length > 0
+      );
+      if (hasFullHostProfile) {
+        validate.hostRegistration({
+          email, password, firstName, lastName,
+          jobTitle: additionalData.jobTitle,
+          organization: additionalData.organization,
+          workLocation: additionalData.workLocation,
+          workPhone: additionalData.workPhone,
+          careerFields: additionalData.careerFields
+        });
+      }
     }
 
     // Check if user already exists
@@ -143,6 +153,22 @@ async function handleRegister(body: any): Promise<APIGatewayProxyResult> {
       ...additionalData,
     };
 
+    // For minimal host accounts, mark profile stage and pending status
+    if (role === 'host') {
+      const hasFullHostProfile = !!(
+        additionalData.jobTitle &&
+        additionalData.organization &&
+        additionalData.workLocation &&
+        additionalData.workPhone &&
+        additionalData.careerFields && Array.isArray(additionalData.careerFields) && additionalData.careerFields.length > 0
+      );
+      if (!hasFullHostProfile) {
+        (userData as any).status = 'pending_profile';
+        (userData as any).verified = false;
+        (userData as any).profileStage = 'incomplete';
+      }
+    }
+
     const dynamoItem = transform.userToDynamoItem(userData, role);
     const redacted = { ...userData, password: userData?.password ? '***' : undefined };
     console.log('Registering user profile in DynamoDB', {
@@ -163,16 +189,15 @@ async function handleRegister(body: any): Promise<APIGatewayProxyResult> {
     // Return appropriate response based on role
     if (role === 'host') {
       return response.success({
-        message: 'Host registration completed successfully! Your profile is pending admin approval. You will receive an email once approved.',
+        message: 'Host account created successfully. You can now log in and complete your profile. Admin approval is still required before semester registration.',
         userId,
         email,
         role,
-        status: 'pending',
+        status: (userData as any).status || 'pending',
         nextSteps: [
-          'Your registration has been submitted for review',
-          'Admin approval is required before you can access your dashboard',
-          'You will receive an email notification once approved',
-          'After approval, you can log in to register for semesters'
+          'Log in to your account',
+          'Complete your IFAD host profile',
+          'Admin approval is required before semester registration'
         ]
       }, 201);
     }
@@ -293,13 +318,8 @@ async function handleLogin(body: any): Promise<APIGatewayProxyResult> {
 
     const profile = userProfiles[0];
 
-    // Check if host is approved
-    if (profile.role === 'host' && profile.status === 'pending') {
-      return response.error('Your host application is still pending admin approval. Please wait for approval notification.', 403, {
-        status: 'pending_approval',
-        message: 'Host registration is under review'
-      });
-    }
+    // Option 2: allow hosts to log in with incomplete or pending profiles
+    // Gate semester registration elsewhere; here just tag the status in the response
 
     if (profile.role === 'host' && profile.status === 'rejected') {
       return response.error('Your host application was not approved. Please contact the administrator for more information.', 403, {

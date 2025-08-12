@@ -386,7 +386,7 @@ const HostRegistration: React.FC = () => {
             </div>
             <div className="flex items-center justify-center gap-3 flex-wrap">
             <Button variant="primary" className="bg-gradient-to-r from-umd-red to-red-600 hover:from-red-600 hover:to-red-700">
-              <Link to="/login">Login to Register for Fall 2025</Link>
+              <Link to="/host">Go to Host Dashboard</Link>
             </Button>
               <Button variant="outline">
                 <Link to="/login">Go to Dashboard (login required)</Link>

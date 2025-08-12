@@ -104,7 +104,11 @@ function App() {
               {/* Registration Routes */}
               <Route path="/register" element={<RegistrationRouter />} />
               <Route path="/register/student" element={<StudentRegistration />} />
-              <Route path="/register/host" element={<HostRegistration />} />
+               {/* Host profile requires login now */}
+               <Route 
+                 path="/register/host" 
+                 element={<Navigate to="/login?type=host" replace />} 
+               />
               <Route path="/register/host/semester" element={<HostSemesterRegistration />} />
               
               {/* Student Routes */}
