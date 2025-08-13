@@ -44,7 +44,18 @@ const LoginPage: React.FC = () => {
       // Redirect immediately based on role to avoid bounce
       if (u) {
         const isHost = u.role === 'host';
-        const nextPath = isHost ? '/host' : (u.role === 'admin' ? '/admin' : '/student');
+        // For hosts, immediately fetch profile to determine gate
+        if (isHost) {
+          try {
+            const resp = await apiService.getProfile();
+            const stage = resp.success ? resp.data?.profileStage : undefined;
+            const next = stage !== 'complete' ? '/host/registration' : '/host';
+            console.log('[login] host profileStage', stage, '→', next);
+            navigate(next, { replace: true });
+            return;
+          } catch {}
+        }
+        const nextPath = u.role === 'admin' ? '/admin' : '/student';
         console.log('[login] navigating to', nextPath);
         navigate(nextPath, { replace: true });
         return;

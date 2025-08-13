@@ -8,6 +8,7 @@ import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import Badge from '../../components/ui/Badge';
 import { awsTimelineService, type TimelineData } from '../../services/aws-timeline';
+import { apiService } from '../../services/api';
 
 const TimelineManagement: React.FC = () => {
   const [activeTimeline, setActiveTimeline] = useState<TimelineData>({
@@ -33,11 +34,14 @@ const TimelineManagement: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [awsConnectionStatus, setAwsConnectionStatus] = useState<'connected' | 'disconnected' | 'checking'>('checking');
+  const [adminSemester, setAdminSemester] = useState<string>('');
+  const [savingAdminSemester, setSavingAdminSemester] = useState(false);
 
   // Check AWS connection and load timeline on component mount
   useEffect(() => {
     checkAwsConnection();
     loadTimelineFromAws();
+    loadAdminSemester();
   }, []);
 
   const checkAwsConnection = async () => {
@@ -59,6 +63,29 @@ const TimelineManagement: React.FC = () => {
       }
     } catch (error) {
       console.error('Failed to load timeline from AWS:', error);
+    }
+  };
+
+  const loadAdminSemester = async () => {
+    try {
+      const res = await apiService.getAdminCurrentSemester();
+      if (res.success && res.data.semester) setAdminSemester(res.data.semester);
+    } catch (e) {
+      console.warn('Failed to load admin semester');
+    }
+  };
+
+  const saveAdminSemester = async () => {
+    if (!adminSemester) return;
+    setSavingAdminSemester(true);
+    try {
+      const res = await apiService.setAdminCurrentSemester(adminSemester);
+      if (!res.success) throw new Error(res.message);
+      alert(`Current semester set to ${res.data.semester}`);
+    } catch (e:any) {
+      alert(e.message || 'Failed to set current semester');
+    } finally {
+      setSavingAdminSemester(false);
     }
   };
 
@@ -335,6 +362,33 @@ const TimelineManagement: React.FC = () => {
               className="px-6 py-3"
             >
               Switch to {activeTimeline.semester === 'fall' ? 'Spring ' + (activeTimeline.year + 1) : 'Fall ' + activeTimeline.year}
+            </Button>
+          </div>
+        </div>
+        {/* Admin Semester Control */}
+        <div className="mt-6 border-t pt-6">
+          <h4 className="text-md font-semibold text-umd-black mb-2">Admin-Visible Current Semester</h4>
+          <p className="text-sm text-umd-gray-600 mb-3">Controls which semester the admin portal and public directory consider “current” (e.g., for registration status).</p>
+          <div className="flex flex-wrap items-center gap-3">
+            <select
+              value={adminSemester}
+              onChange={(e) => setAdminSemester(e.target.value)}
+              className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-umd-red focus:border-transparent bg-white"
+            >
+              <option value="">Select semester…</option>
+              <option value={`${activeTimeline.semester === 'fall' ? 'Fall' : 'Spring'}${activeTimeline.year}`}>
+                {activeTimeline.semester === 'fall' ? 'Fall' : 'Spring'} {activeTimeline.year}
+              </option>
+              <option value={`${activeTimeline.semester === 'fall' ? 'Spring' : 'Fall'}${activeTimeline.semester === 'fall' ? activeTimeline.year + 1 : activeTimeline.year}`}>
+                {activeTimeline.semester === 'fall' ? 'Spring' : 'Fall'} {activeTimeline.semester === 'fall' ? activeTimeline.year + 1 : activeTimeline.year}
+              </option>
+              <option value={`Fall${activeTimeline.year}`}>Fall {activeTimeline.year}</option>
+              <option value={`Spring${activeTimeline.year}`}>Spring {activeTimeline.year}</option>
+              <option value={`Fall${activeTimeline.year + 1}`}>Fall {activeTimeline.year + 1}</option>
+              <option value={`Spring${activeTimeline.year + 1}`}>Spring {activeTimeline.year + 1}</option>
+            </select>
+            <Button variant="primary" onClick={saveAdminSemester} disabled={savingAdminSemester}>
+              {savingAdminSemester ? 'Saving…' : 'Set as Current Semester'}
             </Button>
           </div>
         </div>

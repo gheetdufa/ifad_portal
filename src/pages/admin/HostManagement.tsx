@@ -16,6 +16,7 @@ const HostManagement: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedHosts, setSelectedHosts] = useState<string[]>([]);
   const [selectedHost, setSelectedHost] = useState<any>(null);
+  const [adminSemester, setAdminSemester] = useState<string>('');
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [hosts, setHosts] = useState<any[]>([]);
@@ -24,9 +25,15 @@ const HostManagement: React.FC = () => {
   const [hasMore, setHasMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Load hosts from API
+  // Load hosts and admin semester
   useEffect(() => {
-    loadHosts();
+    (async () => {
+      try {
+        const sem = await apiService.getAdminCurrentSemester();
+        if (sem.success && sem.data.semester) setAdminSemester(sem.data.semester);
+      } catch {}
+      loadHosts();
+    })();
   }, []);
 
   const loadHosts = async (append = false) => {
@@ -289,9 +296,8 @@ const HostManagement: React.FC = () => {
   // Verification and management functions
   const handleViewHost = async (host: any) => {
     try {
-      // fetch fresh profile to include profile fields
-      // Fetch profile using admin-configured current semester (backend will default appropriately)
-      const res = await apiService.getUserById(host.userId || host.id);
+      // fetch fresh profile to include profile fields for the admin semester
+      const res = await apiService.getUserById(host.userId || host.id, { semester: adminSemester || undefined });
       const profile = res.success ? res.data : {};
       const merged = {
         ...host,

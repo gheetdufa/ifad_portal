@@ -39,12 +39,20 @@ const HostDashboard: React.FC = () => {
         {
           try {
             // Use server-determined current semester by omitting param
-            const regResponse = await apiService.getSemesterRegistration('');
+            let regResponse = await apiService.getSemesterRegistration();
             if (regResponse.success && regResponse.data.registered) {
               setRegistrationStatus('registered');
               if (regResponse.data.semester) setCurrentSemester(regResponse.data.semester);
             } else {
-              setRegistrationStatus('not_registered');
+              // Fallback: explicitly check Fall2025 to handle season gap
+              const fallbackSemester = 'Fall2025';
+              regResponse = await apiService.getSemesterRegistration(fallbackSemester);
+              if (regResponse.success && regResponse.data.registered) {
+                setRegistrationStatus('registered');
+                setCurrentSemester(regResponse.data.semester || fallbackSemester);
+              } else {
+                setRegistrationStatus('not_registered');
+              }
             }
           } catch {
             setRegistrationStatus('not_registered');
@@ -68,8 +76,8 @@ const HostDashboard: React.FC = () => {
   const TimelineCard: React.FC = () => {
     const items = [
       { label: 'Profile Created', status: 'done' as const, desc: 'Your host profile has been created' },
+      { label: 'Semester Registration', status: registrationStatus === 'registered' ? 'done' : 'todo', desc: registrationStatus === 'registered' ? `Registered for ${currentSemester}` : `Register for ${currentSemester}` },
       { label: 'Admin Review', status: profileStatus === 'approved' ? 'done' : 'inprogress', desc: profileStatus === 'approved' ? 'Approved by an administrator' : 'We are reviewing your information' },
-      { label: 'Semester Registration', status: profileStatus !== 'approved' ? 'locked' : registrationStatus === 'registered' ? 'done' : 'todo', desc: profileStatus !== 'approved' ? 'Available after approval' : registrationStatus === 'registered' ? `Registered for ${currentSemester}` : `Register for ${currentSemester}` },
       { label: 'Matching & Scheduling', status: registrationStatus === 'registered' ? 'todo' : 'locked', desc: 'We will match you with students based on interests' },
     ];
 

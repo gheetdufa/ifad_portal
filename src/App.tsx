@@ -75,7 +75,7 @@ const AuthAwareLoginRoute: React.FC = () => {
         try {
           const resp = await apiService.getProfile();
           const profileStage = resp.success ? resp.data?.profileStage : undefined;
-          const dest = profileStage === 'incomplete' ? '/host/registration' : '/host';
+          const dest = profileStage !== 'complete' ? '/host/registration' : '/host';
           setRedirectPath(dest);
         } catch {
           setRedirectPath('/host');

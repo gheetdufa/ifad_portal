@@ -638,6 +638,8 @@ class ApiService {
         return { success: true, data: record, message: 'Semester registration saved (dev mode)' };
       }
       // Backend mode: if both, create two registrations
+      const redacted = { ...registrationData };
+      console.log('[api] POST /users/semester-registration start', { baseUrl: this.baseUrl, payload: redacted });
       const upsert = async (payload: any): Promise<SemesterRegistration> => {
         // Try create
         let res = await fetch(`${this.baseUrl}/users/semester-registration`, {
@@ -646,15 +648,18 @@ class ApiService {
           body: JSON.stringify(payload),
         });
         let json = await res.json();
+        console.log('[api] POST /users/semester-registration result', { status: res.status, ok: res.ok, json });
         if (res.ok) return json.data as SemesterRegistration;
         // If already exists, update instead
         if (res.status === 409) {
+          console.log('[api] POST returned 409, attempting PUT upsert');
           res = await fetch(`${this.baseUrl}/users/semester-registration`, {
             method: 'PUT',
             headers: this.getAuthHeaders(),
             body: JSON.stringify(payload),
           });
           json = await res.json();
+          console.log('[api] PUT /users/semester-registration result', { status: res.status, ok: res.ok, json });
           if (!res.ok) throw new Error(json.message || 'Failed to update existing semester registration');
           return json.data as SemesterRegistration;
         }
@@ -734,10 +739,11 @@ class ApiService {
     }
   }
 
-  async getUserById(userId: string): Promise<ApiResponse<any>> {
+  async getUserById(userId: string, opts?: { semester?: string }): Promise<ApiResponse<any>> {
     try {
       if (!this.baseUrl) throw new Error('API URL not configured.');
-      const response = await fetch(`${this.baseUrl}/users/${encodeURIComponent(userId)}`, {
+      const qs = opts?.semester ? `?semester=${encodeURIComponent(opts.semester)}` : '';
+      const response = await fetch(`${this.baseUrl}/users/${encodeURIComponent(userId)}${qs}`, {
         method: 'GET',
         headers: this.getAuthHeaders(),
       });
@@ -746,6 +752,36 @@ class ApiService {
       return { success: true, data: result.data || result, message: 'User retrieved' };
     } catch (e) {
       return { success: false, data: null, message: e instanceof Error ? e.message : 'Failed to get user' };
+    }
+  }
+
+  async getAdminCurrentSemester(): Promise<ApiResponse<{ semester: string }>> {
+    try {
+      if (!this.baseUrl) throw new Error('API URL not configured.');
+      const res = await fetch(`${this.baseUrl}/admin/semester`, { method: 'GET', headers: this.getAuthHeaders() });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.message || 'Failed to get current semester');
+      const payload = (json && json.data) ? json.data : json;
+      return { success: true, data: { semester: payload.semester }, message: 'Current semester retrieved' };
+    } catch (e) {
+      return { success: false, data: { semester: '' } as any, message: e instanceof Error ? e.message : 'Failed to get current semester' };
+    }
+  }
+
+  async setAdminCurrentSemester(semester: string): Promise<ApiResponse<{ semester: string }>> {
+    try {
+      if (!this.baseUrl) throw new Error('API URL not configured.');
+      const res = await fetch(`${this.baseUrl}/admin/semester`, {
+        method: 'POST',
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify({ semester }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.message || 'Failed to set current semester');
+      const payload = (json && json.data) ? json.data : json;
+      return { success: true, data: { semester: payload.semester }, message: 'Current semester updated' };
+    } catch (e) {
+      return { success: false, data: { semester: '' } as any, message: e instanceof Error ? e.message : 'Failed to set current semester' };
     }
   }
 

@@ -200,11 +200,13 @@ const HostSemesterRegistration: React.FC = () => {
     }
 
     setIsSubmitting(true);
+    console.log('[semester] submitting registration', formData);
 
     try {
       // Save via API (dev mode supports mock persistence)
-      const semester = 'Fall 2025';
-      const res = await apiService.registerForSemester({
+      // Send in canonical format without space (backend normalizes too)
+      const semester = 'Fall2025';
+      const payload = {
         semester,
         maxStudents: formData.maxStudents,
         availableDays: formData.availableDays,
@@ -216,11 +218,15 @@ const HostSemesterRegistration: React.FC = () => {
         dmvAreaConfirm: formData.dmvAreaConfirm,
         holidayBreakAvailable: formData.holidayBreakAvailable,
         understandPhysicalOffice: formData.understandPhysicalOffice,
-      });
+      };
+      console.log('[semester] calling api.registerForSemester', payload);
+      const res = await apiService.registerForSemester(payload);
       if (!res.success) throw new Error(res.message || 'Failed to register');
+      console.log('[semester] registration success', res.data);
       setIsSubmitted(true);
     } catch (err: any) {
-      setError('Registration failed. Please try again.');
+      console.error('[semester] registration failed', err);
+      setError(err?.message || 'Registration failed. Please try again.');
     } finally {
       setIsSubmitting(false);
     }

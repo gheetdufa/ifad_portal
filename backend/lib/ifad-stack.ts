@@ -393,6 +393,10 @@ export class IfadStack extends cdk.Stack {
     settingsRes.addMethod('GET', new apigateway.LambdaIntegration(this.lambdaFunctions.admin));
     settingsRes.addMethod('POST', new apigateway.LambdaIntegration(this.lambdaFunctions.admin));
     adminResource.addResource('stats').addMethod('GET', new apigateway.LambdaIntegration(this.lambdaFunctions.admin));
+    // Admin semester endpoints (CORS covered by RestApi default)
+    const semesterRes = adminResource.addResource('semester');
+    semesterRes.addMethod('GET', new apigateway.LambdaIntegration(this.lambdaFunctions.admin));
+    semesterRes.addMethod('POST', new apigateway.LambdaIntegration(this.lambdaFunctions.admin));
     const adminUsersResource = adminResource.addResource('users');
     adminUsersResource.addMethod('GET', new apigateway.LambdaIntegration(this.lambdaFunctions.admin));
     const adminUserIdRes = adminUsersResource.addResource('{userId}');

@@ -65,6 +65,18 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
   }
 };
 
+// Normalize semester strings to canonical format like "Fall2025" or "Spring2026"
+function normalizeSemesterLabel(input: string | undefined): string | undefined {
+  if (!input) return input;
+  const yearMatch = String(input).match(/(20\d{2})/);
+  const year = yearMatch ? yearMatch[1] : undefined;
+  const lower = String(input).toLowerCase();
+  const term = lower.includes('fall') ? 'Fall' : lower.includes('spring') ? 'Spring' : undefined;
+  if (term && year) return `${term}${year}`;
+  // Fallback: strip spaces to reduce mismatches
+  return String(input).replace(/\s+/g, '');
+}
+
 /**
  * Get current user's profile
  * Returns complete profile with role-specific data
@@ -397,7 +409,9 @@ async function handleSemesterRegistration(currentUser: any, body: any): Promise<
   try {
     const { semester, maxStudents, availableDays, experienceType, additionalInfo } = body;
 
-    console.log(`Semester registration request for user ${currentUser.userId}, semester: ${semester}`);
+    const normalizedSemester = normalizeSemesterLabel(semester);
+
+    console.log(`Semester registration request for user ${currentUser.userId}, semester: ${semester} (normalized: ${normalizedSemester})`);
 
     // Validate required fields
     validate.required(semester, 'Semester');
@@ -420,7 +434,7 @@ async function handleSemesterRegistration(currentUser: any, body: any): Promise<
       TableName: TABLE_NAME,
       Key: {
         PK: `USER#${currentUser.userId}`,
-        SK: `SEMESTER#${semester}`,
+        SK: `SEMESTER#${normalizedSemester}`,
       },
     });
     
@@ -455,11 +469,11 @@ async function handleSemesterRegistration(currentUser: any, body: any): Promise<
     const experienceTypes = experienceType === 'both' ? ['in-person', 'virtual'] : [experienceType || 'in-person'];
     const registrationData = {
       PK: `USER#${currentUser.userId}`,
-      SK: `SEMESTER#${semester}`,
+      SK: `SEMESTER#${normalizedSemester}`,
       GSI2PK: `ROLE#host`,
-      GSI2SK: `SEMESTER#${semester}`,
+      GSI2SK: `SEMESTER#${normalizedSemester}`,
       userId: currentUser.userId,
-      semester,
+      semester: normalizedSemester,
       maxStudents: parseInt(maxStudents),
       availableDays: availableDays || [],
       experienceTypes,
@@ -492,7 +506,8 @@ async function handleGetSemesterRegistration(currentUser: any, queryParams: any)
       const setting = await db.get({ TableName: TABLE_NAME, Key: { PK: 'SETTINGS', SK: 'CURRENT_SEMESTER' } });
       adminSemester = setting?.value || null;
     } catch {}
-    const targetSemester = semester || adminSemester || helpers.getCurrentSemester();
+    const targetSemesterRaw = semester || adminSemester || helpers.getCurrentSemester();
+    const targetSemester = normalizeSemesterLabel(targetSemesterRaw)!;
 
     console.log(`Getting semester registration for user ${currentUser.userId}, semester: ${targetSemester}`);
 
