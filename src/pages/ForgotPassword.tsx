@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import apiService from '../services/api';
-import SmallerLogo from '../assets/Smaller_logo.png';
+import IFADLogo from '../assets/white_logo.png';
 
 const ForgotPassword: React.FC = () => {
   const navigate = useNavigate();
@@ -30,10 +30,10 @@ const ForgotPassword: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-red-50 flex items-center justify-center px-4 py-10">
-      <div className="max-w-md w-full">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-red-50 flex items-start justify-center px-4 pt-6 pb-10">
+      <div className="max-w-md w-full mt-4">
         <div className="text-center mb-6">
-          <img src={SmallerLogo} alt="UMD Logo" className="h-20 w-auto mx-auto mb-4" />
+          <img src={IFADLogo} alt="IFAD Logo" className="h-24 sm:h-40 md:h-64 lg:h-96 w-auto mx-auto mb-4 max-w-full" />
           <h1 className="text-3xl font-bold text-umd-black">Forgot your password?</h1>
           <p className="text-umd-gray-700 mt-2">Enter your email and we’ll send you a verification code.</p>
         </div>

@@ -7,7 +7,9 @@ try {
 } catch { 
   utils = require('../../layers/shared/nodejs/utils'); 
 }
-const { response, db, auth, validate, transform, helpers } = utils;
+  const { response, db, auth, validate, transform, helpers } = utils;
+  const { SESClient, SendEmailCommand } = require('@aws-sdk/client-ses');
+  const ses = new SESClient({ region: process.env.AWS_REGION || 'us-east-1' });
 
 const TABLE_NAME = process.env.TABLE_NAME!;
 
@@ -40,7 +42,7 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
         return await handleSearchUsers(currentUser, queryStringParameters);
       
       case path.includes('/users/{userId}') && method === 'GET':
-        return await handleGetUserById(currentUser, pathParameters.userId!);
+        return await handleGetUserById(currentUser, pathParameters.userId!, queryStringParameters);
       
       case path.includes('/users/hosts') && method === 'GET':
         return await handleGetHosts(currentUser, queryStringParameters);
@@ -89,7 +91,13 @@ async function handleGetProfile(currentUser: any): Promise<APIGatewayProxyResult
     // For hosts, also get their current semester registrations
     if (userProfile.role === 'host') {
       try {
-        const currentSemester = helpers.getCurrentSemester();
+        // Use admin-configured semester if available
+        let adminSemester = null as string | null;
+        try {
+          const setting = await db.get({ TableName: TABLE_NAME, Key: { PK: 'SETTINGS', SK: 'CURRENT_SEMESTER' } });
+          adminSemester = setting?.value || null;
+        } catch {}
+        const currentSemester = adminSemester || helpers.getCurrentSemester();
         const semesterRegistration = await db.get({
           TableName: TABLE_NAME,
           Key: {
@@ -147,6 +155,9 @@ async function handleUpdateProfile(currentUser: any, body: any): Promise<APIGate
       delete updateData.status;
     }
 
+    // Determine if profile just transitioned to complete
+    const isNowComplete = updateData.profileStage === 'complete' && currentProfile.profileStage !== 'complete';
+
     // Update profile
     const updatedProfile = {
       ...currentProfile,
@@ -160,6 +171,33 @@ async function handleUpdateProfile(currentUser: any, body: any): Promise<APIGate
     });
 
     console.log(`Successfully updated profile for user ${currentUser.userId}`);
+
+    // Fire-and-forget: send boilerplate email when profile becomes complete
+    if (isNowComplete) {
+      const fromEmail = process.env.FROM_EMAIL || 'no-reply@ifad.local';
+      const toEmail = updatedProfile.email || currentUser.email;
+      if (toEmail) {
+        const subject = 'IFAD Host Profile Submitted';
+        const bodyText = 'Thank you for submitting your IFAD host profile. Our team will review it and follow up with next steps.';
+        const bodyHtml = `<p>Thank you for submitting your <strong>IFAD host profile</strong>.</p><p>Our team will review it and follow up with next steps.</p>`;
+        try {
+          await ses.send(new SendEmailCommand({
+            Destination: { ToAddresses: [toEmail] },
+            Message: {
+              Subject: { Data: subject },
+              Body: {
+                Text: { Data: bodyText },
+                Html: { Data: bodyHtml },
+              },
+            },
+            Source: fromEmail,
+          }));
+          console.log('Profile completion email sent to', toEmail);
+        } catch (err) {
+          console.warn('Failed to send profile completion email:', (err as any)?.message || err);
+        }
+      }
+    }
 
     return response.success({
       message: 'Profile updated successfully',
@@ -229,7 +267,7 @@ async function handleSearchUsers(currentUser: any, queryParams: any): Promise<AP
  * Get user profile by ID
  * Users can view their own, admins can view any
  */
-async function handleGetUserById(currentUser: any, userId: string): Promise<APIGatewayProxyResult> {
+async function handleGetUserById(currentUser: any, userId: string, queryParams?: any): Promise<APIGatewayProxyResult> {
   try {
     // Authorization check
     if (currentUser.userId !== userId && currentUser.role !== 'admin') {
@@ -246,6 +284,31 @@ async function handleGetUserById(currentUser: any, userId: string): Promise<APIG
 
     if (!userProfile) {
       return response.error('User not found', 404);
+    }
+
+    // If admin viewing a host, enrich with semester registration (requested semester or current)
+    if (currentUser.role === 'admin' && userProfile.role === 'host') {
+      try {
+        const requestedSemester = queryParams?.semester;
+        // Respect admin-configured current semester if no explicit semester requested
+        let adminSemester = null as string | null;
+        try {
+          const setting = await db.get({ TableName: TABLE_NAME, Key: { PK: 'SETTINGS', SK: 'CURRENT_SEMESTER' } });
+          adminSemester = setting?.value || null;
+        } catch {}
+        const currentSemester = requestedSemester || adminSemester || helpers.getCurrentSemester();
+        const semesterRegistration = await db.get({
+          TableName: TABLE_NAME,
+          Key: {
+            PK: `USER#${userId}`,
+            SK: `SEMESTER#${currentSemester}`,
+          },
+        });
+        (userProfile as any).currentSemesterRegistration = semesterRegistration || null;
+        (userProfile as any).currentSemester = currentSemester;
+      } catch (error) {
+        console.log('Error getting semester registration (admin view):', error);
+      }
     }
 
     return response.success(userProfile);
@@ -352,7 +415,7 @@ async function handleSemesterRegistration(currentUser: any, body: any): Promise<
     // Option 2: Allow hosts to register for semester before admin approval
     // Approval will still be required later in the matching/visibility flow
 
-    // Check if already registered for this semester
+    // Check if already registered for this semester (single key per semester)
     const existingRegistration = await db.get({
       TableName: TABLE_NAME,
       Key: {
@@ -360,33 +423,56 @@ async function handleSemesterRegistration(currentUser: any, body: any): Promise<
         SK: `SEMESTER#${semester}`,
       },
     });
-
+    
+    // If a record exists, merge experience types and update instead of failing
     if (existingRegistration) {
-      return response.error('Already registered for this semester', 409, {
-        existingRegistration
+      const existingTypes: string[] = Array.isArray((existingRegistration as any).experienceTypes)
+        ? (existingRegistration as any).experienceTypes
+        : ((existingRegistration as any).experienceType ? [(existingRegistration as any).experienceType] : []);
+      const incomingTypes: string[] = experienceType === 'both' ? ['in-person', 'virtual'] : [experienceType || 'in-person'];
+      const mergedTypes = Array.from(new Set([...existingTypes, ...incomingTypes]));
+
+      const updatedRegistration = {
+        ...existingRegistration,
+        experienceTypes: mergedTypes,
+        // Keep legacy field for compatibility (first of types)
+        experienceType: mergedTypes[0],
+        maxStudents: maxStudents ? parseInt(maxStudents) : existingRegistration.maxStudents,
+        availableDays: availableDays || existingRegistration.availableDays || [],
+        additionalInfo: additionalInfo !== undefined ? additionalInfo : (existingRegistration as any).additionalInfo || '',
+        updatedAt: new Date().toISOString(),
+      };
+
+      await db.put({ TableName: TABLE_NAME, Item: updatedRegistration });
+      console.log(`Merged semester registration for user ${currentUser.userId}, semester ${semester}`);
+      return response.success({
+        message: 'Semester registration updated',
+        registration: updatedRegistration,
       });
     }
 
-    // Create semester registration
-    const registrationData = transform.semesterRegistrationToDynamoItem(currentUser.userId, {
+    // Create semester registration (supports both)
+    const experienceTypes = experienceType === 'both' ? ['in-person', 'virtual'] : [experienceType || 'in-person'];
+    const registrationData = {
+      PK: `USER#${currentUser.userId}`,
+      SK: `SEMESTER#${semester}`,
+      GSI2PK: `ROLE#host`,
+      GSI2SK: `SEMESTER#${semester}`,
+      userId: currentUser.userId,
       semester,
       maxStudents: parseInt(maxStudents),
       availableDays: availableDays || [],
-      experienceType: experienceType || 'in-person',
+      experienceTypes,
+      experienceType: experienceTypes[0],
       additionalInfo: additionalInfo || '',
-    });
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      entityType: 'SEMESTER_REGISTRATION',
+    } as any;
 
-    await db.put({
-      TableName: TABLE_NAME,
-      Item: registrationData,
-    });
-
+    await db.put({ TableName: TABLE_NAME, Item: registrationData });
     console.log(`Successfully created semester registration for user ${currentUser.userId}, semester ${semester}`);
-
-    return response.success({
-      message: 'Successfully registered for semester',
-      registration: registrationData,
-    });
+    return response.success({ message: 'Successfully registered for semester', registration: registrationData });
   } catch (error) {
     console.error('Semester registration error:', error);
     return response.error('Failed to register for semester', 500);
@@ -400,7 +486,13 @@ async function handleGetSemesterRegistration(currentUser: any, queryParams: any)
   try {
     const { semester } = queryParams;
 
-    const targetSemester = semester || helpers.getCurrentSemester();
+    // Determine semester: explicit > admin-configured > helper
+    let adminSemester = null as string | null;
+    try {
+      const setting = await db.get({ TableName: TABLE_NAME, Key: { PK: 'SETTINGS', SK: 'CURRENT_SEMESTER' } });
+      adminSemester = setting?.value || null;
+    } catch {}
+    const targetSemester = semester || adminSemester || helpers.getCurrentSemester();
 
     console.log(`Getting semester registration for user ${currentUser.userId}, semester: ${targetSemester}`);
 

@@ -834,19 +834,19 @@ const HomePage: React.FC = () => {
           
           {/* Enhanced Action Buttons */}
           <div className="flex flex-col sm:flex-row lg:flex-row gap-4 sm:gap-6 lg:gap-8 justify-center items-center">
-            <div className="group relative">
+            <Link to="/public-hosts" className="group relative inline-block">
               <div className="absolute -inset-1 bg-gradient-to-r from-umd-gold via-yellow-400 to-umd-gold rounded-2xl blur opacity-70 group-hover:opacity-100 transition duration-300"></div>
               <Button
                 size="lg"
                 variant="secondary"
-                className="relative px-8 sm:px-12 lg:px-16 py-4 sm:py-6 lg:py-8 text-lg sm:text-xl lg:text-2xl font-black bg-gradient-to-r from-umd-gold to-yellow-400 text-black hover:from-yellow-400 hover:to-umd-gold transform hover:scale-110 transition-all duration-300 rounded-2xl shadow-2xl"
+                className="relative px-8 sm:px-12 lg:px-16 py-4 sm:py-6 lg:py-8 text-lg sm:text-xl lg:text-2xl font-black bg-gradient-to-r from-umd-gold to-yellow-400 text-black hover:from-yellow-400 hover:to-umd-gold transform group-hover:scale-110 transition-all duration-300 rounded-2xl shadow-2xl"
               >
-                <a href="/public-hosts" target="_blank" rel="noopener noreferrer" className="flex items-center space-x-3">
+                <span className="flex items-center space-x-3">
                   <span>🔍</span>
                   <span>Browse Host List</span>
-                </a>
+                </span>
               </Button>
-            </div>
+            </Link>
             
             <div className="text-3xl font-bold text-gray-400">OR</div>
             

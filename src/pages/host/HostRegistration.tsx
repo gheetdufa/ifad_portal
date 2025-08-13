@@ -428,6 +428,25 @@ const HostRegistration: React.FC = () => {
               )}
             </section>
 
+            {/* Contact Phone */}
+            <section>
+              <h2 className="text-2xl font-bold text-umd-black mb-6">Contact</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Phone Number
+                  </label>
+                  <Input
+                    type="tel"
+                    placeholder="(555) 555-0100"
+                    value={formData.preferredPhone}
+                    onChange={(e) => handleInputChange('preferredPhone', e.target.value)}
+                    id="field-preferredPhone"
+                  />
+                </div>
+              </div>
+            </section>
+
             {/* Basic Info removed: account already created */}
 
             {/* About You (Internal only) */}

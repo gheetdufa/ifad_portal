@@ -202,6 +202,18 @@ export class IfadStack extends cdk.Stack {
             }),
           ],
         }),
+        SESAccess: new iam.PolicyDocument({
+          statements: [
+            new iam.PolicyStatement({
+              effect: iam.Effect.ALLOW,
+              actions: [
+                'ses:SendEmail',
+                'ses:SendRawEmail',
+              ],
+              resources: ['*'],
+            }),
+          ],
+        }),
         CognitoAccess: new iam.PolicyDocument({
           statements: [
             new iam.PolicyStatement({
@@ -304,6 +316,7 @@ export class IfadStack extends cdk.Stack {
       USER_POOL_ID: this.userPool.userPoolId,
       USER_POOL_CLIENT_ID: this.userPoolClient.userPoolClientId,
       STAGE: stage,
+      FROM_EMAIL: `no-reply@${cdk.Aws.ACCOUNT_ID}.example.com`,
     };
 
     // Auth functions

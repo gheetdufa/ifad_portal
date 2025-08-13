@@ -44,174 +44,11 @@ const PublicHostList: React.FC = () => {
       setIsLoading(true);
       const response = await apiService.getPublicHosts();
       
-      if (response.success && response.data.hosts) {
-        setHosts(response.data.hosts);
+      if (response.success && Array.isArray(response.data?.hosts)) {
+        setHosts(response.data.hosts as any);
       } else {
-        // Fallback to sample data if API fails
-        const processedHosts: PublicHost[] = [
-      {
-        id: '1',
-        ifadOption: '60-minute virtual informational interviews',
-        spotsAvailable: 1,
-        careerFields: ['Agriculture/Environment', 'Consulting', 'Engineering', 'Science and Research'],
-        companyName: 'Stantec',
-        jobTitle: 'Associate',
-        website: 'www.stantec.com',
-        companyDescription: 'Stantec is a global leader in sustainable engineering, architecture, and environmental consulting. We are designers, engineers, scientists, project managers, and strategic advisors.',
-        hostExpectations: 'Students will learn about environmental services, assessment and remediation of contaminated sites, working with various engineers and scientists in evaluating chemicals and remediation strategies.',
-        workLocation: 'Naples, FL 34105',
-        dcMetroAccessible: 'No',
-        federalAgency: 'No',
-        requiresCitizenship: 'No',
-        requiresBackgroundCheck: 'No',
-        availableDays: 'Any weekday (Mon-Fri)',
-        springBreakAvailable: 'Yes',
-        umdAlumni: 'Yes',
-        additionalInfo: 'Flexible with timing, can accommodate students with different academic schedules.'
-      },
-      {
-        id: '2',
-        ifadOption: '60-minute virtual informational interviews',
-        spotsAvailable: 1,
-        careerFields: ['Architecture/Real Estate', 'Business'],
-        companyName: 'Jersey Mikes',
-        jobTitle: 'Director of Real Estate',
-        website: 'www.jerseymikes.com',
-        companyDescription: 'Director of Real Estate for Jersey Mikes Subs. Finding sites and negotiating deals in partnership with franchisees across the northeast region.',
-        hostExpectations: 'Students will learn about career paths in real estate, site selection, deal negotiation, and working with franchisees.',
-        workLocation: 'Manasquan, NJ',
-        dcMetroAccessible: 'No',
-        federalAgency: 'No',
-        requiresCitizenship: 'No',
-        requiresBackgroundCheck: 'No',
-        availableDays: 'Any weekday (Mon-Fri)',
-        springBreakAvailable: 'Yes',
-        umdAlumni: 'Yes',
-        additionalInfo: '8-9 year career in real estate with various job experiences.'
-      },
-      {
-        id: '3',
-        ifadOption: '60-minute virtual informational interviews',
-        spotsAvailable: 1,
-        careerFields: ['Business', 'Consulting', 'Human Resources'],
-        companyName: 'T-Rex Solutions LLC',
-        jobTitle: 'Talent Management, Senior Manager',
-        website: 'T-RexsolutionsLLC.com',
-        companyDescription: 'T-Rex Solutions LLC is a leading IT professional services firm helping federal government modernize, protect, and scale its systems and data.',
-        hostExpectations: 'Share experience with students interested in pursuing jobs in Human Resources or Government Contracting Industry.',
-        workLocation: 'Bethesda, MD 20817',
-        dcMetroAccessible: 'Yes',
-        federalAgency: 'No',
-        requiresCitizenship: 'No',
-        requiresBackgroundCheck: 'No',
-        availableDays: 'Morning schedule preferred',
-        springBreakAvailable: 'No',
-        umdAlumni: 'No',
-        additionalInfo: 'Morning schedule preferred'
-      },
-      {
-        id: '4',
-        ifadOption: '60-minute virtual informational interviews',
-        spotsAvailable: 1,
-        careerFields: ['Cybersecurity', 'Engineering', 'Government and International Relations', 'Law and Law Enforcement', 'Military'],
-        companyName: 'Diplomatic Security Service',
-        jobTitle: 'Special Agent',
-        website: 'https://www.state.gov/about-us-bureau-of-diplomatic-security/',
-        companyDescription: 'DSS Special Agents are sworn federal law enforcement officers, specially trained Foreign Service security professionals and U.S. Diplomats.',
-        hostExpectations: 'Learn about protecting American diplomats, conducting investigations, handling fraud cases, counterintelligence, and international security operations.',
-        workLocation: 'Washington, DC 20520',
-        dcMetroAccessible: 'Yes',
-        federalAgency: 'Yes',
-        requiresCitizenship: 'Yes',
-        requiresBackgroundCheck: 'Yes',
-        availableDays: 'Any weekday (Mon-Fri)',
-        springBreakAvailable: 'Yes',
-        umdAlumni: 'Yes',
-        additionalInfo: 'High-security environment with extensive background requirements.'
-      },
-      {
-        id: '5',
-        ifadOption: '60-minute virtual informational interviews',
-        spotsAvailable: 2,
-        careerFields: ['Agriculture/Environment'],
-        companyName: 'Choose Clean Water Coalition',
-        jobTitle: 'Policy Specialist',
-        website: 'https://www.choosecleanwater.org/',
-        companyDescription: 'The Choose Clean Water Coalition advocates for clean rivers and streams in the Chesapeake Bay region, coordinating policy and advocacy.',
-        hostExpectations: 'Gain insight into environmental advocacy work and learn about being a leader in environmental policy.',
-        workLocation: 'Annapolis, MD 21401',
-        dcMetroAccessible: 'No',
-        federalAgency: 'No',
-        requiresCitizenship: 'No',
-        requiresBackgroundCheck: 'No',
-        availableDays: 'Any weekday (Mon-Fri)',
-        springBreakAvailable: 'Yes',
-        umdAlumni: 'Yes',
-        additionalInfo: 'Focus on environmental advocacy and policy work.'
-      },
-      {
-        id: '6',
-        ifadOption: '60-minute virtual informational interviews',
-        spotsAvailable: 2,
-        careerFields: ['Computing/Computer Science and Technology', 'Data Science and Analytics'],
-        companyName: 'Capital One',
-        jobTitle: 'Cyber Technical Associate',
-        website: 'capitalone.com',
-        companyDescription: 'Capital One is a tech company masquerading as a bank, focusing on technology innovation in financial services.',
-        hostExpectations: 'Anyone interested in anything remotely related to technology will benefit from a conversation about tech careers in banking.',
-        workLocation: 'McLean, VA 22102',
-        dcMetroAccessible: 'Yes',
-        federalAgency: 'No',
-        requiresCitizenship: 'Yes',
-        requiresBackgroundCheck: 'No',
-        availableDays: 'Any weekday (Mon-Fri)',
-        springBreakAvailable: 'Yes',
-        umdAlumni: 'Yes',
-        additionalInfo: 'Strong focus on technology and innovation in financial services.'
-      },
-      {
-        id: '7',
-        ifadOption: '60-minute virtual informational interviews',
-        spotsAvailable: 2,
-        careerFields: ['Health and Healthcare'],
-        companyName: 'CVS Pharmacy',
-        jobTitle: 'Pharmacist',
-        website: 'CVS.com',
-        companyDescription: 'CVS pharmacy plays an important role in healthcare by providing pharmaceutical care at retail level.',
-        hostExpectations: 'Students can learn about the role a pharmacist plays at retail level as well as other healthcare settings.',
-        workLocation: 'Olney, MD',
-        dcMetroAccessible: 'No',
-        federalAgency: 'No',
-        requiresCitizenship: 'No',
-        requiresBackgroundCheck: 'No',
-        availableDays: 'Any weekday (Mon-Fri)',
-        springBreakAvailable: 'Yes',
-        umdAlumni: 'No',
-        additionalInfo: 'Focus on retail pharmacy and healthcare delivery.'
-      },
-      {
-        id: '8',
-        ifadOption: 'In-person',
-        spotsAvailable: 1,
-        careerFields: ['Agriculture/Environment', 'Government and International Relations', 'Policy and Advocacy', 'Science and Research'],
-        companyName: 'CropLife America',
-        jobTitle: 'Senior Manager, Federal Government Relations',
-        website: 'https://www.croplifeamerica.org/',
-        companyDescription: 'CropLife America represents developers, manufacturers, and distributors of plant science solutions for agriculture and pest management.',
-        hostExpectations: 'Experience federal government relations, meetings on Capitol Hill with Members of Congress, and agricultural policy advocacy.',
-        workLocation: 'Arlington, VA 22203',
-        dcMetroAccessible: 'Yes',
-        federalAgency: 'No',
-        requiresCitizenship: 'No',
-        requiresBackgroundCheck: 'No',
-        availableDays: 'Any weekday (Mon-Fri)',
-        springBreakAvailable: 'No',
-        umdAlumni: 'Yes',
-        additionalInfo: 'In-person experience includes Capitol Hill meetings and agricultural advocacy.'
-      }
-        ];
-        
-        setHosts(processedHosts);
+        // No fallback: show empty list when API has no data
+        setHosts([]);
       }
     } catch (error) {
       console.error('Failed to load hosts:', error);
@@ -221,7 +58,14 @@ const PublicHostList: React.FC = () => {
     }
   };
 
-  const allCareerFields = Array.from(new Set(hosts.flatMap(host => host.careerFields)));
+  const allCareerFields = Array.from(
+    new Set(
+      (Array.isArray(hosts) ? hosts : []).reduce<string[]>((acc, host) => {
+        const cf = Array.isArray(host.careerFields) ? host.careerFields : [];
+        return acc.concat(cf);
+      }, [])
+    )
+  );
 
   const filteredHosts = hosts.filter(host => {
     const matchesSearch = host.companyName.toLowerCase().includes(searchTerm.toLowerCase()) ||

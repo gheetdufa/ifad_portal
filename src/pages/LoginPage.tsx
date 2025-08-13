@@ -5,7 +5,7 @@ import apiService from '../services/api';
 import { useAuth } from '../hooks/useAuth';
 import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
-import LogoBlack from '../assets/logo_black.png';
+import LogoWhite from '../assets/white_logo.png';
 
 const LoginPage: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -44,7 +44,7 @@ const LoginPage: React.FC = () => {
       // Redirect immediately based on role to avoid bounce
       if (u) {
         const isHost = u.role === 'host';
-        const nextPath = isHost ? '/host/registration' : (u.role === 'admin' ? '/admin' : '/student');
+        const nextPath = isHost ? '/host' : (u.role === 'admin' ? '/admin' : '/student');
         console.log('[login] navigating to', nextPath);
         navigate(nextPath, { replace: true });
         return;
@@ -92,13 +92,13 @@ const LoginPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-umd-gray-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
+    <div className="min-h-screen bg-umd-gray-50 flex items-start justify-center pt-6 pb-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-md w-full space-y-8 mt-4">
         <div className="text-center">
-          <img 
-            src={LogoBlack} 
-            alt="University of Maryland Logo" 
-            className="h-32 w-auto mx-auto mb-6 transform hover:scale-105 transition-transform duration-300"
+          <img
+            src={LogoWhite}
+            alt="IFAD Logo"
+            className="h-24 sm:h-40 md:h-64 lg:h-96 w-auto mx-auto mb-4 transform hover:scale-105 transition-transform duration-300 max-w-full"
           />
           <h2 className="text-3xl font-bold text-umd-black mb-4">
             Welcome to IFAD

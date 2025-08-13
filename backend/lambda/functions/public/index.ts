@@ -61,15 +61,16 @@ async function handleGetPublicHosts(queryParams: any): Promise<APIGatewayProxyRe
       ExpressionAttributeValues: {
         ':role': 'ROLE#host',
       },
-      FilterExpression: '#verified = :verified',
-      ExpressionAttributeNames: { '#verified': 'verified' },
+      FilterExpression: '#verified = :verified AND #status = :approved',
+      ExpressionAttributeNames: { '#verified': 'verified', '#status': 'status' },
       Limit: parseInt(limit),
     };
 
     params.ExpressionAttributeValues[':verified'] = true;
+    params.ExpressionAttributeValues[':approved'] = 'approved';
 
     // Add filters based on query parameters
-    let filterExpressions = ['#verified = :verified'];
+    let filterExpressions = ['#verified = :verified', '#status = :approved'];
 
     if (industry) {
       filterExpressions.push('contains(industry, :industry)');
@@ -155,8 +156,22 @@ async function handleGetPublicHosts(queryParams: any): Promise<APIGatewayProxyRe
       }
     }
 
+    // Only include hosts with a current semester registration present (flag set by users handler enrichment)
+    // Respect admin-configured current semester if available
+    let adminSemester = null as string | null;
+    try {
+      const adminSetting = await db.get({ TableName: TABLE_NAME, Key: { PK: 'SETTINGS', SK: 'CURRENT_SEMESTER' } });
+      adminSemester = adminSetting?.value || null;
+    } catch {}
+    const currentSemester = adminSemester || getCurrentSemester();
+    const eligible = (hosts || []).filter((host: any) => {
+      // Accept either embedded registration data or a simple flag; be defensive
+      const hasCurrent = !!host.currentSemesterRegistration || host.registered === true || (host.currentSemester === currentSemester && host.registration);
+      return hasCurrent;
+    });
+
     // Filter out sensitive information for public view with defensive defaults
-    const publicHosts = (hosts || []).map((host: any) => ({
+    const publicHosts = eligible.map((host: any) => ({
       userId: host?.userId,
       firstName: host?.firstName || '',
       lastName: host?.lastName || '',

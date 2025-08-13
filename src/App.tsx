@@ -1,5 +1,5 @@
 import React, { ErrorBoundary } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, useSearchParams } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useSearchParams, useLocation } from 'react-router-dom';
 import { AuthContext, useAuthProvider, useAuth } from './hooks/useAuth';
 import Header from './components/layout/Header';
 import Footer from './components/layout/Footer';
@@ -22,6 +22,7 @@ import Reports from './pages/admin/Reports';
 import Communication from './pages/admin/Communication';
 import Settings from './pages/admin/Settings';
 import TimelineManagement from './pages/admin/TimelineManagement';
+import { apiService } from './services/api';
 
 // Protected Route Component
 const ProtectedRoute: React.FC<{ children: React.ReactNode; allowedRoles: string[] }> = ({ 
@@ -55,6 +56,8 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode; allowedRoles: string
 // Auth-aware Login Route - redirects if already authenticated
 const AuthAwareLoginRoute: React.FC = () => {
   const { user, isLoading } = useAuth();
+  const [checking, setChecking] = React.useState(false);
+  const [redirectPath, setRedirectPath] = React.useState<string | null>(null);
   
   if (isLoading) {
     return (
@@ -65,13 +68,70 @@ const AuthAwareLoginRoute: React.FC = () => {
   }
   
   if (user) {
-    // Redirect authenticated users to their dashboard
-    const dashboardPath = user.role === 'admin' ? '/admin' : 
-                         user.role === 'host' ? '/host' : '/student';
+    // If host, check profile completion to choose destination
+    if (user.role === 'host' && !checking && redirectPath === null) {
+      setChecking(true);
+      (async () => {
+        try {
+          const resp = await apiService.getProfile();
+          const profileStage = resp.success ? resp.data?.profileStage : undefined;
+          const dest = profileStage === 'incomplete' ? '/host/registration' : '/host';
+          setRedirectPath(dest);
+        } catch {
+          setRedirectPath('/host');
+        } finally {
+          setChecking(false);
+        }
+      })();
+    }
+    if (redirectPath) return <Navigate to={redirectPath} replace />;
+    if (checking) {
+      return (
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-2 border-umd-red border-t-transparent"></div>
+        </div>
+      );
+    }
+    const dashboardPath = user.role === 'admin' ? '/admin' : user.role === 'student' ? '/student' : '/host';
     return <Navigate to={dashboardPath} replace />;
   }
   
   return <LoginPage />;
+};
+
+// Host profile gate for guarding host routes that require a completed profile
+const HostProfileGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [loading, setLoading] = React.useState(true);
+  const [mustComplete, setMustComplete] = React.useState(false);
+  const location = useLocation();
+
+  React.useEffect(() => {
+    let isMounted = true;
+    (async () => {
+      try {
+        const resp = await apiService.getProfile();
+        const stage = resp.success ? resp.data?.profileStage : undefined;
+        if (isMounted) setMustComplete(stage === 'incomplete');
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    })();
+    return () => { isMounted = false; };
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-2 border-umd-red border-t-transparent"></div>
+      </div>
+    );
+  }
+
+  if (mustComplete && location.pathname !== '/host/registration') {
+    return <Navigate to="/host/registration" replace />;
+  }
+
+  return <>{children}</>;
 };
 
 // Registration Router Component to handle query params
@@ -137,9 +197,9 @@ function App() {
                 element={
                   <ProtectedRoute allowedRoles={['host']}>
                     <Routes>
-                      <Route index element={<HostDashboard />} />
+                      <Route index element={<HostProfileGate><HostDashboard /></HostProfileGate>} />
                       <Route path="registration" element={<HostRegistration />} />
-                      <Route path="semester-registration" element={<HostSemesterRegistration />} />
+                      <Route path="semester-registration" element={<HostProfileGate><HostSemesterRegistration /></HostProfileGate>} />
                     </Routes>
                   </ProtectedRoute>
                 } 

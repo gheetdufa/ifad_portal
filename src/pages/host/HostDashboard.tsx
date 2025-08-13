@@ -12,8 +12,7 @@ import { apiService } from '../../services/api';
 const HostDashboard: React.FC = () => {
   const [profileStatus, setProfileStatus] = useState<'incomplete' | 'pending' | 'approved' | 'rejected'>('pending');
   const [registrationStatus, setRegistrationStatus] = useState('not_registered'); // 'not_registered', 'registered', 'pending'
-  const [showOneTimeApproved, setShowOneTimeApproved] = useState(false);
-  const [currentSemester] = useState('Fall 2025');
+  const [currentSemester, setCurrentSemester] = useState('Fall 2025');
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [profile, setProfile] = useState<any | null>(null);
@@ -26,28 +25,24 @@ const HostDashboard: React.FC = () => {
   const checkHostStatus = async () => {
     try {
       setIsLoading(true);
-      // Check if host profile is approved
+      // Load profile
       const profileResponse = await apiService.getProfile();
       if (profileResponse.success) {
         const isVerified = !!profileResponse.data.verified;
-        const stage = profileResponse.data.profileStage === 'incomplete' ? 'incomplete' : undefined;
-        const status: 'incomplete' | 'pending' | 'approved' = stage ? 'incomplete' : (isVerified ? 'approved' : 'pending');
+        const stageIsIncomplete = profileResponse.data.profileStage === 'incomplete';
+        const status: 'incomplete' | 'pending' | 'approved' = stageIsIncomplete ? 'incomplete' : (isVerified ? 'approved' : 'pending');
         setProfileStatus(status);
         setProfile(profileResponse.data);
-        if (status === 'approved') {
-          const seen = localStorage.getItem('ifad_host_seenApproved') === '1';
-          if (!seen) {
-            setShowOneTimeApproved(true);
-            localStorage.setItem('ifad_host_seenApproved', '1');
-          }
-        }
+        // If incomplete, redirect handled by router gate; still set state
         
         // Check registration regardless of approval per updated policy
-        if (true) {
+        {
           try {
-            const regResponse = await apiService.getSemesterRegistration(currentSemester);
+            // Use server-determined current semester by omitting param
+            const regResponse = await apiService.getSemesterRegistration('');
             if (regResponse.success && regResponse.data.registered) {
               setRegistrationStatus('registered');
+              if (regResponse.data.semester) setCurrentSemester(regResponse.data.semester);
             } else {
               setRegistrationStatus('not_registered');
             }
@@ -174,250 +169,66 @@ const HostDashboard: React.FC = () => {
     }
   };
 
-  const renderProfilePendingView = () => (
-    <div className="space-y-8 py-4">
-      <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-6 flex items-center justify-between">
-        <div className="flex items-center space-x-3">
-          <Clock className="w-6 h-6 text-yellow-600" />
+  const renderStatusBanner = () => {
+    const rawPrefix = (profile?.preferredPrefix || '').trim();
+    const prefixText = rawPrefix && rawPrefix.toLowerCase() !== 'none' ? rawPrefix + ' ' : '';
+    const fullName = `${prefixText}${[profile?.firstName, profile?.lastName].filter(Boolean).join(' ')}`.trim();
+    if (profileStatus === 'incomplete') {
+      return (
+        <div className="bg-blue-50 border border-blue-200 rounded-xl p-6 flex items-center justify-between">
           <div>
-            <p className="font-semibold text-yellow-900">Your host profile is under review</p>
-            <p className="text-sm text-yellow-800">You can still update your profile and register for the semester</p>
+            <h1 className="text-2xl font-bold text-blue-900 mb-1">Welcome, {fullName || 'Host'}</h1>
+            <p className="font-semibold text-blue-900">Complete your host profile to continue</p>
+            <p className="text-sm text-blue-800">Provide organization, role, location, and experience details.</p>
           </div>
-        </div>
-        <Button variant="outline" onClick={handleRefresh} disabled={isRefreshing}>
-          {isRefreshing ? <RefreshCw className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
-          {isRefreshing ? 'Checking...' : 'Check Status'}
-        </Button>
-      </div>
-
-      <Card>
-        <h2 className="text-xl font-bold text-gray-900 mb-4">Quick actions</h2>
-        <div className="flex flex-wrap gap-3">
-          <Link to="/host/registration">
-            <Button variant="outline" icon={Edit}>Edit/Complete Profile</Button>
-          </Link>
-          <Link to="/host/semester-registration">
-            <Button variant="outline" icon={Calendar}>Register for {currentSemester}</Button>
-          </Link>
-        </div>
-      </Card>
-
-      {/* Dashboard grid with timeline and info */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 space-y-6">
-          <TimelineCard />
-        </div>
-        <div className="space-y-6">
-          <ProfileSummaryCard />
-          <ResourcesCard />
-        </div>
-      </div>
-    </div>
-  );
-
-  const renderIncompleteProfileView = () => (
-    <div className="space-y-8 py-4">
-      <div className="bg-blue-50 border border-blue-200 rounded-xl p-6">
-        <h2 className="text-xl font-bold text-blue-900 mb-2">Complete your host profile to continue</h2>
-        <p className="text-sm text-blue-800">Please provide your organization, role, location, and experience details so students can learn about your site.</p>
-        <div className="mt-4">
           <Link to="/host/registration">
             <Button variant="primary" icon={Edit} className="bg-gradient-to-r from-umd-red to-red-600 hover:from-red-600 hover:to-red-700">Complete Profile</Button>
           </Link>
         </div>
-      </div>
-    </div>
-  );
-
-  const renderApprovedNotRegisteredView = () => (
-    <div className="text-center py-16">
-      <div className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
-        <CheckCircle className="w-12 h-12 text-green-600" />
-      </div>
-      <h2 className="text-3xl font-bold text-gray-900 mb-4">Profile Approved! 🎉</h2>
-      <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
-        Great news! Your host profile has been approved. Now you can register for the {currentSemester} semester 
-        to start hosting UMD students.
-      </p>
-      <div className="bg-green-50 border border-green-200 rounded-lg p-6 max-w-2xl mx-auto mb-8">
-        <h3 className="text-lg font-semibold text-green-900 mb-3">Ready for the next step?</h3>
-        <div className="space-y-2 text-left text-green-800">
-          <p>✅ <strong>Step 1:</strong> Profile created & approved</p>
-          <p>📝 <strong>Step 2:</strong> Register for {currentSemester} semester</p>
-          <p>🤝 <strong>Step 3:</strong> Get matched with students</p>
-        </div>
-      </div>
-      <div className="flex justify-center space-x-4">
-        <Link to="/host/semester-registration">
-          <Button variant="primary" size="lg" className="bg-gradient-to-r from-umd-red to-red-600 hover:from-red-600 hover:to-red-700">
-            Register for {currentSemester}
+      );
+    }
+    if (profileStatus === 'pending') {
+      return (
+        <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-6 flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <Clock className="w-6 h-6 text-yellow-600" />
+            <div>
+              <h1 className="text-2xl font-bold text-yellow-900 mb-1">Welcome, {fullName || 'Host'}</h1>
+              <p className="font-semibold text-yellow-900">Your host profile is under review</p>
+              <p className="text-sm text-yellow-800">You can still update your profile and register for the semester</p>
+            </div>
+          </div>
+          <Button variant="outline" onClick={handleRefresh} disabled={isRefreshing}>
+            {isRefreshing ? <RefreshCw className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+            {isRefreshing ? 'Checking...' : 'Check Status'}
           </Button>
-        </Link>
-        <Link to="/host/registration">
-          <Button variant="outline" icon={Edit}>
-            Edit Profile
-          </Button>
-        </Link>
-      </div>
-
-      {/* One-time plus full dashboard layout */}
-      <div className="mt-12 grid grid-cols-1 lg:grid-cols-3 gap-6 text-left">
-        <div className="lg:col-span-2 space-y-6">
-          <TimelineCard />
         </div>
-        <div className="space-y-6">
-          <ProfileSummaryCard />
-          <ResourcesCard />
-        </div>
-      </div>
-    </div>
-  );
-
-  const renderApprovedBannerDashboard = () => (
-    <div className="space-y-8">
+      );
+    }
+    return (
       <div className="bg-green-50 border border-green-200 rounded-xl p-6 flex items-center justify-between">
         <div className="flex items-center space-x-3">
           <CheckCircle className="w-6 h-6 text-green-600" />
           <div>
+            <h1 className="text-2xl font-bold text-green-900 mb-1">Welcome, {fullName || 'Host'}</h1>
             <p className="font-semibold text-green-900">Your host profile is approved</p>
-            <p className="text-sm text-green-800">Next: register for {currentSemester} to receive student matches</p>
+            {registrationStatus !== 'registered' ? (
+              <p className="text-sm text-green-800">Next: register for {currentSemester} to receive student matches</p>
+            ) : (
+              <p className="text-sm text-green-800">You are registered for {currentSemester}</p>
+            )}
           </div>
         </div>
-        <Link to="/host/semester-registration">
-          <Button variant="primary" className="bg-gradient-to-r from-umd-red to-red-600 hover:from-red-600 hover:to-red-700">
-            Register for {currentSemester}
-          </Button>
-        </Link>
-      </div>
-
-      <Card>
-        <h2 className="text-xl font-bold text-gray-900 mb-4">Quick actions</h2>
-        <div className="flex flex-wrap gap-3">
-          <Link to="/host/registration">
-            <Button variant="outline" icon={Edit}>Edit Profile</Button>
+        {registrationStatus !== 'registered' && (
+          <Link to="/host/semester-registration">
+            <Button variant="primary" className="bg-gradient-to-r from-umd-red to-red-600 hover:from-red-600 hover:to-red-700">
+              Register for {currentSemester}
+            </Button>
           </Link>
-          <Button variant="outline" icon={RefreshCw} onClick={handleRefresh} disabled={isRefreshing}>
-            {isRefreshing ? 'Checking...' : 'Refresh Status'}
-          </Button>
-        </div>
-      </Card>
-
-      {/* Full dashboard grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 space-y-6">
-          <TimelineCard />
-        </div>
-        <div className="space-y-6">
-          <ProfileSummaryCard />
-          <ResourcesCard />
-        </div>
+        )}
       </div>
-    </div>
-  );
-
-  const renderRegisteredView = () => (
-    <div className="space-y-8">
-      {/* Welcome Header */}
-      <div className="bg-gradient-to-r from-umd-red to-red-600 text-white rounded-xl p-8 relative overflow-hidden">
-        <div className="relative z-10">
-          <div className="flex items-center space-x-6">
-            <div className="text-6xl">{hostData.profileImage}</div>
-            <div>
-              <h1 className="text-3xl md:text-4xl font-bold mb-2">
-                Welcome back, {hostData.firstName} {hostData.lastName}!
-              </h1>
-              <div className="flex items-center space-x-4 text-red-100 mb-2">
-                <div className="flex items-center space-x-2">
-                  <Building className="w-4 h-4" />
-                  <span>{hostData.organization}</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Briefcase className="w-4 h-4" />
-                  <span>{hostData.jobTitle}</span>
-                </div>
-              </div>
-              <div className="flex items-center space-x-2">
-                <CheckCircle className="w-4 h-4 text-green-300" />
-                <span className="text-green-200">Registered for {currentSemester}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-        {/* Decorative background */}
-        <div className="absolute inset-0 opacity-10">
-          <div className="absolute inset-0" style={{
-            backgroundImage: `radial-gradient(circle at 2px 2px, white 1px, transparent 0)`,
-            backgroundSize: '40px 40px'
-          }}></div>
-        </div>
-      </div>
-
-      {/* Quick Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card className="text-center p-6">
-          <Calendar className="w-8 h-8 text-umd-red mx-auto mb-4" />
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">Current Semester</h3>
-          <p className="text-2xl font-bold text-umd-red">{currentSemester}</p>
-        </Card>
-        <Card className="text-center p-6">
-          <UserCheck className="w-8 h-8 text-umd-gold mx-auto mb-4" />
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">Student Matches</h3>
-          <p className="text-2xl font-bold text-umd-gold">Coming Soon</p>
-        </Card>
-        <Card className="text-center p-6">
-          <FileText className="w-8 h-8 text-umd-black mx-auto mb-4" />
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">Next Steps</h3>
-          <p className="text-sm text-gray-600">Wait for student matching</p>
-        </Card>
-      </div>
-
-      {/* Action Items */}
-          <Card>
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">What's Next?</h2>
-            <div className="space-y-4">
-              <div className="flex items-start space-x-4 p-4 rounded-lg border border-umd-gold/40 bg-umd-gold/10">
-                <div className="w-8 h-8 bg-umd-red text-white rounded-full flex items-center justify-center flex-shrink-0 mt-1">
-              <span className="text-sm font-bold">1</span>
-            </div>
-            <div>
-              <h3 className="font-semibold text-gray-900">Student Matching (Late October)</h3>
-              <p className="text-gray-600">
-                We'll match you with UMD students based on their interests and your expertise. 
-                You'll be notified via email when matches are available.
-              </p>
-            </div>
-          </div>
-              <div className="flex items-start space-x-4 p-4 rounded-lg border border-umd-red/20 bg-umd-red/5">
-                <div className="w-8 h-8 bg-umd-red text-white rounded-full flex items-center justify-center flex-shrink-0 mt-1">
-              <span className="text-sm font-bold">2</span>
-            </div>
-            <div>
-              <h3 className="font-semibold text-gray-900">Coordinate Experience</h3>
-              <p className="text-gray-600">
-                Work with matched students to schedule your job shadowing or interview sessions 
-                for late October through mid-January 2026.
-              </p>
-            </div>
-          </div>
-        </div>
-      </Card>
-
-      {/* Quick Actions */}
-      <div className="flex flex-wrap gap-4 justify-center">
-        <Link to="/host/registration">
-          <Button variant="outline" icon={Edit}>
-            Edit Profile
-          </Button>
-        </Link>
-        <Button variant="outline" icon={Mail}>
-          Contact Support
-        </Button>
-        <Button variant="outline" icon={Settings}>
-          Settings
-        </Button>
-      </div>
-    </div>
-  );
+    );
+  };
 
   if (isLoading) {
     return (
@@ -432,14 +243,35 @@ const HostDashboard: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+        {renderStatusBanner()}
+
         <Card>
-          {profileStatus === 'incomplete' && renderIncompleteProfileView()}
-          {profileStatus === 'pending' && renderProfilePendingView()}
-          {profileStatus === 'approved' && showOneTimeApproved && registrationStatus === 'not_registered' && renderApprovedNotRegisteredView()}
-          {profileStatus === 'approved' && !showOneTimeApproved && registrationStatus === 'not_registered' && renderApprovedBannerDashboard()}
-          {profileStatus === 'approved' && registrationStatus === 'registered' && renderRegisteredView()}
+          <h2 className="text-xl font-bold text-gray-900 mb-4">Quick actions</h2>
+          <div className="flex flex-wrap gap-3">
+            <Link to="/host/registration">
+              <Button variant="outline" icon={Edit}>Edit Profile</Button>
+            </Link>
+            {registrationStatus !== 'registered' && (
+              <Link to="/host/semester-registration">
+                <Button variant="outline" icon={Calendar}>Register for {currentSemester}</Button>
+              </Link>
+            )}
+            <Button variant="outline" icon={RefreshCw} onClick={handleRefresh} disabled={isRefreshing}>
+              {isRefreshing ? 'Checking...' : 'Refresh Status'}
+            </Button>
+          </div>
         </Card>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 space-y-6">
+            <TimelineCard />
+          </div>
+          <div className="space-y-6">
+            <ProfileSummaryCard />
+            <ResourcesCard />
+          </div>
+        </div>
       </div>
     </div>
   );

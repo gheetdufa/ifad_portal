@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { 
   Users, User, Search, Filter, Eye, CheckCircle, XCircle, Mail, Download, Upload,
-  Edit3, Building, Briefcase, Star, Clock, TrendingUp, MessageSquare,
+  Edit3, Building, Briefcase, Star, Clock, MessageSquare,
   Phone, Globe, MapPin, FileText
 } from 'lucide-react';
 import Card from '../../components/ui/Card';
@@ -284,14 +284,40 @@ const HostManagement: React.FC = () => {
     }
   };
 
-  const totalCapacity = hosts.filter(h => h.status === 'approved').length * 2; // Assuming 2 students per host
   const totalActive = hosts.filter(h => h.status === 'approved').length;
-  const averageRating = 4.5; // Mock rating since our backend doesn't have ratings yet
 
   // Verification and management functions
-  const handleViewHost = (host: any) => {
-    setSelectedHost(host);
-    setShowDetailModal(true);
+  const handleViewHost = async (host: any) => {
+    try {
+      // fetch fresh profile to include profile fields
+      // Fetch profile using admin-configured current semester (backend will default appropriately)
+      const res = await apiService.getUserById(host.userId || host.id);
+      const profile = res.success ? res.data : {};
+      const merged = {
+        ...host,
+        // Surface profile fields into modal expectations
+        phone: profile.preferredPhone || profile.workPhone || host.phone,
+        companyName: host.companyName || profile.organization,
+        location: host.location || profile.workLocation || [profile.companyAddress, profile.cityState, profile.zipCode].filter(Boolean).join(', '),
+        website: host.website || profile.companyWebsite,
+        registrationData: {
+          ...(host.registrationData || {}),
+          organizationDescription: profile.organizationDescription || host.registrationData?.organizationDescription,
+          experienceDescription: profile.experienceDescription || host.registrationData?.experienceDescription,
+          careerFields: profile.careerFields || host.registrationData?.careerFields || [],
+          availableDays: host.registrationData?.availableDays || [],
+        },
+        profileStage: profile.profileStage || 'incomplete',
+          vetted: !!profile.verified,
+          registeredThisSemester: !!profile.currentSemesterRegistration,
+          currentSemester: profile.currentSemester,
+      };
+      setSelectedHost(merged);
+    } catch {
+      setSelectedHost(host);
+    } finally {
+      setShowDetailModal(true);
+    }
   };
 
   const handleVerifyHost = async (hostId: string, action: 'approve' | 'reject') => {
@@ -332,6 +358,21 @@ const HostManagement: React.FC = () => {
     } catch (error) {
       console.error('Error processing bulk action:', error);
       alert('Failed to process bulk action');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleDeleteHost = async (hostId: string) => {
+    if (!window.confirm('Delete this host? This cannot be undone.')) return;
+    setIsProcessing(true);
+    try {
+      const res = await apiService.deleteHost(hostId.toString());
+      if (!res.success) throw new Error(res.message);
+      setShowDetailModal(false);
+      await loadHosts();
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'Failed to delete host');
     } finally {
       setIsProcessing(false);
     }
@@ -385,17 +426,7 @@ const HostManagement: React.FC = () => {
       </div>
 
       {/* Quick Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-        <Card>
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-umd-gray-600">Total Capacity</p>
-              <p className="text-2xl font-bold text-umd-black">{totalCapacity}</p>
-              <p className="text-sm text-green-600">+12% from last cycle</p>
-            </div>
-            <TrendingUp className="w-8 h-8 text-green-600" />
-          </div>
-        </Card>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <Card>
           <div className="flex items-center justify-between">
             <div>
@@ -404,16 +435,6 @@ const HostManagement: React.FC = () => {
               <p className="text-sm text-blue-600">Ready to host</p>
             </div>
             <CheckCircle className="w-8 h-8 text-blue-600" />
-          </div>
-        </Card>
-        <Card>
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-umd-gray-600">Avg Rating</p>
-              <p className="text-2xl font-bold text-umd-black">{averageRating.toFixed(1)}</p>
-              <p className="text-sm text-umd-gold">⭐ Host satisfaction</p>
-            </div>
-            <Star className="w-8 h-8 text-umd-gold" />
           </div>
         </Card>
         <Card>
@@ -545,29 +566,24 @@ const HostManagement: React.FC = () => {
                     />
                   </td>
                   <td className="px-4 py-3">
-                    <div className="flex items-center space-x-3">
-                      <div className="w-10 h-10 bg-umd-red text-white rounded-full flex items-center justify-center font-medium">
-                        {host.contactName ? host.contactName.split(' ').map((n: string) => n[0]).join('') : 'H'}
-                      </div>
-                      <div>
-                        <input
-                          className="font-medium text-umd-black bg-transparent border-b border-transparent focus:border-umd-red focus:outline-none"
-                          defaultValue={host.contactName || 'Unknown'}
-                          onBlur={(e) => {
-                            const val = e.target.value.trim();
-                            if (val && val !== host.contactName) handleInlineUpdate(host, 'contactName', val);
-                          }}
-                        />
-                        <input
-                          className="text-sm text-umd-gray-600 bg-transparent border-b border-transparent focus:border-umd-red focus:outline-none"
-                          defaultValue={host.position || ''}
-                          placeholder="Title"
-                          onBlur={(e) => {
-                            const val = e.target.value.trim();
-                            if (val !== host.position) handleInlineUpdate(host, 'position', val);
-                          }}
-                        />
-                      </div>
+                    <div>
+                      <input
+                        className="font-medium text-umd-black bg-transparent border-b border-transparent focus:border-umd-red focus:outline-none"
+                        defaultValue={host.contactName || 'Unknown'}
+                        onBlur={(e) => {
+                          const val = e.target.value.trim();
+                          if (val && val !== host.contactName) handleInlineUpdate(host, 'contactName', val);
+                        }}
+                      />
+                      <input
+                        className="text-sm text-umd-gray-600 bg-transparent border-b border-transparent focus:border-umd-red focus:outline-none"
+                        defaultValue={host.position || ''}
+                        placeholder="Title"
+                        onBlur={(e) => {
+                          const val = e.target.value.trim();
+                          if (val !== host.position) handleInlineUpdate(host, 'position', val);
+                        }}
+                      />
                     </div>
                   </td>
                   <td className="px-4 py-3">
@@ -631,6 +647,15 @@ const HostManagement: React.FC = () => {
                       >
                         Edit
                       </Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => handleDeleteHost(String(host.id))}
+                        className="hover:bg-red-500 hover:text-white"
+                        disabled={isProcessing}
+                      >
+                        Delete
+                      </Button>
                       {host.status === 'pending' && (
                         <>
                           <Button 
@@ -692,7 +717,7 @@ const HostManagement: React.FC = () => {
       {showDetailModal && selectedHost && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl p-8 max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-8">
+            <div className="flex items-center justify-between mb-4">
               <h2 className="text-3xl font-bold text-umd-black">Host Details</h2>
               <button 
                 onClick={() => setShowDetailModal(false)}
@@ -700,6 +725,34 @@ const HostManagement: React.FC = () => {
               >
                 ×
               </button>
+            </div>
+
+            {/* Status summary */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-8">
+              <Card>
+                <div className="p-4 text-center">
+                  <p className="text-sm text-umd-gray-600">Profile</p>
+                  <p className={`text-lg font-bold ${selectedHost.profileStage === 'complete' ? 'text-green-700' : 'text-orange-700'}`}>
+                    {selectedHost.profileStage === 'complete' ? 'Complete' : 'Incomplete'}
+                  </p>
+                </div>
+              </Card>
+              <Card>
+                <div className="p-4 text-center">
+                  <p className="text-sm text-umd-gray-600">Vetted</p>
+                  <p className={`text-lg font-bold ${selectedHost.vetted ? 'text-green-700' : 'text-orange-700'}`}>
+                    {selectedHost.vetted ? 'Yes' : 'No'}
+                  </p>
+                </div>
+              </Card>
+              <Card>
+                <div className="p-4 text-center">
+                  <p className="text-sm text-umd-gray-600">Registered ({selectedHost.currentSemester || 'Current'})</p>
+                  <p className={`text-lg font-bold ${selectedHost.registeredThisSemester ? 'text-green-700' : 'text-red-700'}`}>
+                    {selectedHost.registeredThisSemester ? 'Yes' : 'No'}
+                  </p>
+                </div>
+              </Card>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -904,6 +957,13 @@ const HostManagement: React.FC = () => {
                 }}
               >
                 Edit Profile
+              </Button>
+              <Button 
+                variant="error"
+                onClick={() => handleDeleteHost(String(selectedHost.id))}
+                disabled={isProcessing}
+              >
+                Delete Host
               </Button>
               <Button 
                 variant="secondary" 

@@ -19,10 +19,13 @@ const HostSignup: React.FC = () => {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [emailTaken, setEmailTaken] = useState(false);
+  const [successMsg, setSuccessMsg] = useState('');
 
   const handleChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     if (error) setError('');
+    if (field === 'email') setEmailTaken(false);
   };
 
   const validate = () => {
@@ -60,9 +63,14 @@ const HostSignup: React.FC = () => {
         workPhone: '555-555-0100',
         careerFields: ['Other'],
       });
-      navigate('/login?type=host', { replace: true });
+      setSuccessMsg('Successful account creation. Redirecting you to login...');
+      setTimeout(() => navigate('/login?type=host', { replace: true }), 1200);
     } catch (err: any) {
-      setError(err?.message || 'Registration failed');
+      const msg = err?.message || 'Registration failed';
+      setError(msg);
+      if (/already exists|exists/i.test(msg)) {
+        setEmailTaken(true);
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -82,6 +90,9 @@ const HostSignup: React.FC = () => {
             {error && (
               <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">{error}</div>
             )}
+            {successMsg && (
+              <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg text-sm">{successMsg}</div>
+            )}
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Input
@@ -100,13 +111,19 @@ const HostSignup: React.FC = () => {
               />
             </div>
 
-            <Input
-              type="email"
-              placeholder="Work Email"
-              value={formData.email}
-              onChange={(e) => handleChange('email', e.target.value)}
-              required
-            />
+            <div>
+              <Input
+                type="email"
+                placeholder="Work Email"
+                value={formData.email}
+                onChange={(e) => handleChange('email', e.target.value)}
+                required
+                className={emailTaken ? 'border-red-500' : ''}
+              />
+              {emailTaken && (
+                <p className="text-xs text-red-600 mt-1">This email is already in the system. Try logging in or resetting your password.</p>
+              )}
+            </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Input

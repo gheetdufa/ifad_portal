@@ -44,6 +44,12 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
       case path.includes('/admin/stats') && method === 'GET':
         return await handleGetStats(queryStringParameters);
       
+      case path.includes('/admin/semester') && method === 'GET':
+        return await handleGetCurrentSemester();
+      
+      case path.includes('/admin/semester') && method === 'POST':
+        return await handleSetCurrentSemester(body);
+      
       case path.includes('/admin/users') && method === 'GET':
         return await handleGetAllUsers(queryStringParameters);
       
@@ -103,6 +109,38 @@ async function handleGetSettings(queryParams: any): Promise<APIGatewayProxyResul
   } catch (error) {
     console.error('Get settings error:', error);
     return response.error('Failed to retrieve settings', 500);
+  }
+}
+
+/**
+ * Get/set the current public semester flag used by directory filtering
+ */
+async function handleGetCurrentSemester(): Promise<APIGatewayProxyResult> {
+  try {
+    const setting = await db.get({
+      TableName: TABLE_NAME,
+      Key: { PK: 'SETTINGS', SK: 'CURRENT_SEMESTER' },
+    });
+    const semester = setting?.value || helpers.getCurrentSemester();
+    return response.success({ semester });
+  } catch (error) {
+    console.error('Get current semester setting error:', error);
+    return response.error('Failed to get current semester', 500);
+  }
+}
+
+async function handleSetCurrentSemester(body: any): Promise<APIGatewayProxyResult> {
+  try {
+    const { semester } = body;
+    validate.required(semester, 'semester');
+    await db.put({
+      TableName: TABLE_NAME,
+      Item: { PK: 'SETTINGS', SK: 'CURRENT_SEMESTER', key: 'CURRENT_SEMESTER', value: semester, updatedAt: new Date().toISOString() },
+    });
+    return response.success({ message: 'Current semester updated', semester });
+  } catch (error) {
+    console.error('Set current semester error:', error);
+    return response.error('Failed to set current semester', 500);
   }
 }
 

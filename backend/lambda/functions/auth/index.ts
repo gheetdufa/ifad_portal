@@ -398,15 +398,19 @@ async function handleForgotPassword(body: any): Promise<APIGatewayProxyResult> {
     const { email } = body;
     validate.required(email, 'Email');
     validate.email(email);
-    const cmd = new ForgotPasswordCommand({
-      ClientId: USER_POOL_CLIENT_ID,
-      Username: email,
-    });
-    await cognito.send(cmd);
-    return response.success({ message: 'Password reset code sent to your email' });
+    const cmd = new ForgotPasswordCommand({ ClientId: USER_POOL_CLIENT_ID, Username: email });
+    try {
+      await cognito.send(cmd);
+    } catch (err) {
+      // Swallow specific errors to avoid user enumeration; log for diagnostics
+      console.warn('Cognito forgot password error (suppressed):', (err as any)?.name || err);
+    }
+    // Always return success to prevent account enumeration
+    return response.success({ message: 'If an account exists for this email, a verification code has been sent.' });
   } catch (error: any) {
     console.error('Forgot password error:', error);
-    return response.error('Failed to initiate password reset', 400, error.message);
+    // Still return success to maintain UX and avoid enumeration
+    return response.success({ message: 'If an account exists for this email, a verification code has been sent.' });
   }
 }
 

@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { CheckCircle, Calendar, Clock, Users, Mail } from 'lucide-react';
+import { CAREER_FIELDS } from '../../types';
 import { useAuth } from '../../hooks/useAuth';
 import { apiService } from '../../services/api';
 import Card from '../../components/ui/Card';
@@ -11,6 +12,11 @@ import SmallerLogo from '../../assets/Smaller_logo.png';
 const HostSemesterRegistration: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const [profile, setProfile] = useState<any>(null);
+  const [profileLoading, setProfileLoading] = useState<boolean>(false);
+  const [profileError, setProfileError] = useState<string>('');
+  const [profileSaving, setProfileSaving] = useState<boolean>(false);
+  const [profileSavedMsg, setProfileSavedMsg] = useState<string>('');
   
   const [formData, setFormData] = useState({
     confirmInfo: false,
@@ -33,6 +39,99 @@ const HostSemesterRegistration: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [error, setError] = useState('');
+  const [step, setStep] = useState<number>(1);
+  const [reviewError, setReviewError] = useState<string>('');
+
+  useEffect(() => {
+    const loadProfile = async () => {
+      try {
+        setProfileLoading(true);
+        setProfileError('');
+        const res = await apiService.getProfile();
+        if (!res.success) throw new Error(res.message);
+        setProfile(res.data);
+      } catch (e: any) {
+        setProfileError(e.message || 'Failed to load profile');
+      } finally {
+        setProfileLoading(false);
+      }
+    };
+    loadProfile();
+  }, []);
+
+  const handleQuickProfileChange = (field: string, value: any) => {
+    setProfile((prev: any) => ({ ...(prev || {}), [field]: value }));
+    setProfileSavedMsg('');
+  };
+
+  const toggleProfileCareerField = (field: string) => {
+    setProfile((prev: any) => {
+      const current: string[] = Array.isArray(prev?.careerFields)
+        ? prev.careerFields
+        : String(prev?.careerFields || '')
+            .split(',')
+            .map((s) => s.trim())
+            .filter(Boolean);
+      const isSelected = current.includes(field);
+      let updated: string[];
+      if (isSelected) {
+        updated = current.filter((f) => f !== field);
+      } else {
+        if (current.length >= 5) return prev; // enforce max 5 like profile form
+        updated = [...current, field];
+      }
+      return { ...(prev || {}), careerFields: updated };
+    });
+    setProfileSavedMsg('');
+  };
+
+  const saveQuickProfileChanges = async (): Promise<boolean> => {
+    if (!user) return;
+    try {
+      setProfileSaving(true);
+      setProfileError('');
+      const updates: Record<string, any> = {
+        userId: user.userId || user.id,
+        organization: profile?.organization,
+        jobTitle: profile?.jobTitle,
+        companyWebsite: profile?.companyWebsite,
+        companyAddress: profile?.companyAddress,
+        cityState: profile?.cityState,
+        zipCode: profile?.zipCode,
+        organizationDescription: profile?.organizationDescription,
+        experienceDescription: profile?.experienceDescription,
+        careerFields: Array.isArray(profile?.careerFields)
+          ? profile.careerFields
+          : String(profile?.careerFields || '')
+              .split(',')
+              .map((s) => s.trim())
+              .filter(Boolean),
+      };
+      const res = await apiService.updateProfile(updates);
+      if (!res.success) throw new Error(res.message);
+      setProfileSavedMsg('Profile changes saved.');
+      return true;
+    } catch (e: any) {
+      setProfileError(e.message || 'Failed to save profile changes');
+      return false;
+    } finally {
+      setProfileSaving(false);
+    }
+  };
+
+  const handleNextFromProfile = async () => {
+    // Require confirmation before proceeding
+    if (!formData.confirmInfo) {
+      setReviewError('Please confirm your host profile information is up-to-date');
+      const el = document.getElementById('field-confirmInfo');
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
+    setReviewError('');
+    // Save then advance on success
+    const ok = await saveQuickProfileChanges();
+    if (ok) setStep(2);
+  };
 
   const handleInputChange = (field: string, value: any) => {
     setFormData(prev => ({
@@ -270,39 +369,141 @@ const HostSemesterRegistration: React.FC = () => {
         </Card>
 
         <form onSubmit={handleSubmit}>
-          <Card className="space-y-8">
-            {error && (
-              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
-                {error}
+          {step === 1 ? (
+            <Card className="space-y-6">
+              <div className="text-center">
+                <h2 className="text-2xl font-bold text-umd-black mb-2">Review your Host Information</h2>
+                <p className="text-gray-700">Confirm your profile details below before continuing to registration.</p>
               </div>
-            )}
+              <div className="mt-2">
+                <div className="p-4">
+                  {profileLoading && (
+                    <p className="text-sm text-gray-600">Loading profile…</p>
+                  )}
+                  {profileError && (
+                    <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-2 rounded text-sm mb-3">{profileError}</div>
+                  )}
+                  {!profileLoading && profile && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Organization</label>
+                        <Input value={profile.organization || ''} onChange={(e)=>handleQuickProfileChange('organization', e.target.value)} />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Job Title</label>
+                        <Input value={profile.jobTitle || ''} onChange={(e)=>handleQuickProfileChange('jobTitle', e.target.value)} />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Company Website</label>
+                        <Input type="url" value={profile.companyWebsite || ''} onChange={(e)=>handleQuickProfileChange('companyWebsite', e.target.value)} />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Company Address</label>
+                        <Input value={profile.companyAddress || ''} onChange={(e)=>handleQuickProfileChange('companyAddress', e.target.value)} />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">City, State</label>
+                        <Input value={profile.cityState || ''} onChange={(e)=>handleQuickProfileChange('cityState', e.target.value)} />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">ZIP Code</label>
+                        <Input value={profile.zipCode || ''} onChange={(e)=>handleQuickProfileChange('zipCode', e.target.value)} />
+                      </div>
+                      <div className="md:col-span-2">
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Organization Description (student-facing)</label>
+                        <textarea value={profile.organizationDescription || ''} onChange={(e)=>handleQuickProfileChange('organizationDescription', e.target.value)} rows={3} className="w-full px-3 py-2 border-2 border-gray-200 rounded-lg" />
+                      </div>
+                      <div className="md:col-span-2">
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Student Experience Description (student-facing)</label>
+                        <textarea value={profile.experienceDescription || ''} onChange={(e)=>handleQuickProfileChange('experienceDescription', e.target.value)} rows={3} className="w-full px-3 py-2 border-2 border-gray-200 rounded-lg" />
+                      </div>
+                      <div className="md:col-span-2">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Career Fields</label>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+                          {CAREER_FIELDS.map((field) => {
+                            const selectedArray = Array.isArray(profile.careerFields)
+                              ? profile.careerFields
+                              : String(profile.careerFields || '')
+                                  .split(',')
+                                  .map((s) => s.trim())
+                                  .filter(Boolean);
+                            const isSelected = selectedArray.includes(field);
+                            const isDisabled = !isSelected && selectedArray.length >= 5;
+                            return (
+                              <label key={field} className={`flex items-center space-x-2 p-3 rounded-lg cursor-pointer transition-all duration-200 ${
+                                isSelected
+                                  ? 'bg-blue-100 border-2 border-blue-500 text-blue-900'
+                                  : isDisabled
+                                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                  : 'bg-gray-50 hover:bg-blue-50 border-2 border-transparent'
+                              }`}>
+                                <input
+                                  type="checkbox"
+                                  checked={isSelected}
+                                  onChange={() => toggleProfileCareerField(field)}
+                                  disabled={isDisabled}
+                                  className="w-4 h-4 text-blue-600 disabled:opacity-50"
+                                />
+                                <span className="text-sm font-medium">{field}</span>
+                                {isSelected && <CheckCircle className="w-4 h-4 text-blue-600 ml-auto" />}
+                              </label>
+                            );
+                          })}
+                        </div>
+                        <p className="text-sm text-gray-500 mt-2">
+                          Selected: {Array.isArray(profile.careerFields) ? profile.careerFields.length : String(profile.careerFields || '').split(',').filter((s)=>s.trim()).length}/5
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+              {/* Profile Confirmation now required before Next (moved here) */}
+              <section>
+                <p className="text-gray-700 mb-3">
+                  Please make sure the information in your IFAD host profile is accurate and most up-to-date. If there are
+                  updates, please update or correct your profile before registering as an IFAD host this semester.
+                </p>
+                <label className="flex items-start space-x-3 p-4 bg-blue-50 rounded-lg cursor-pointer">
+                  <input
+                    id="field-confirmInfo"
+                    type="checkbox"
+                    checked={formData.confirmInfo}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, confirmInfo: e.target.checked }))}
+                    className="w-5 h-5 text-blue-600 mt-1"
+                  />
+                  <span className="text-sm">
+                    I confirm that my information in the HOST INFORMATION document is the SAME, and would like to be
+                    registered as a host automatically for the FALL 2025 IFAD program.
+                  </span>
+                </label>
+                {reviewError && (
+                  <div className="mt-2 bg-red-50 border border-red-200 text-red-700 px-4 py-2 rounded text-sm">{reviewError}</div>
+                )}
+              </section>
 
-            <div className="text-center">
-              <h2 className="text-2xl font-bold text-umd-black mb-6">REGISTRATION QUESTIONS</h2>
-            </div>
+              <div className="flex items-center justify-between">
+                <div className="text-sm text-gray-600">You can edit these details later from your profile.</div>
+                <div className="flex items-center gap-3">
+                  <Button type="button" variant="outline" onClick={saveQuickProfileChanges} loading={profileSaving}>Save</Button>
+                  <Button type="button" onClick={handleNextFromProfile} loading={profileSaving}>Next</Button>
+                  {profileSavedMsg && <span className="text-sm text-green-700">{profileSavedMsg}</span>}
+                </div>
+              </div>
+            </Card>
+          ) : (
+            <Card className="space-y-8">
+              {error && (
+                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+                  {error}
+                </div>
+              )}
+              <div className="text-center">
+                <h2 className="text-2xl font-bold text-umd-black mb-6">REGISTRATION QUESTIONS</h2>
+              </div>
 
-            {/* Profile Confirmation */}
-            <section>
-              <p className="text-gray-700 mb-4">
-                Please make sure the information in your IFAD host profile is accurate and most up-to-date. 
-                If there are updates, please update or correct your profile before registering as an IFAD host this semester.
-              </p>
-              <label className="flex items-start space-x-3 p-4 bg-blue-50 rounded-lg cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={formData.confirmInfo}
-                  onChange={(e) => handleInputChange('confirmInfo', e.target.checked)}
-                  className="w-5 h-5 text-blue-600 mt-1"
-                  required
-                />
-                <span className="text-sm">
-                  I confirm that my information in the HOST INFORMATION document is the SAME, and would like to be 
-                  registered as a host automatically for the FALL 2025 IFAD program.
-                </span>
-              </label>
-            </section>
 
-            {/* Physical Office Understanding */}
+              {/* Physical Office Understanding */}
             <section>
               <label className="flex items-start space-x-3 p-4 bg-yellow-50 rounded-lg cursor-pointer">
                 <input
@@ -575,6 +776,7 @@ const HostSemesterRegistration: React.FC = () => {
               </Button>
             </div>
           </Card>
+          )}
         </form>
       </div>
     </div>
